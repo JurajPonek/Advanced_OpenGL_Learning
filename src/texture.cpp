@@ -15,7 +15,7 @@ namespace game
         auto num_channels = int{3};
         std::unique_ptr<::stbi_uc, decltype(&::stbi_image_free)> raw_data{
             ::stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(data.data()), static_cast<int>(data.size()), &w,
-                                    &h, &num_channels, 0),
+                                    &h, &num_channels, 4),
             ::stbi_image_free};
         ensure(raw_data, "Failed to parse  texture data");
         ensure(static_cast<std::uint32_t>(w) == width, "Width has changed");

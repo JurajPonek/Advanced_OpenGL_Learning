@@ -2,7 +2,9 @@
 #include "mesh.hpp"
 #include "auto_release.hpp"
 #include "buffer_writer.hpp"
+#include "mesh_loader.hpp"
 #include "opengl.hpp"
+#include "mesh_loader.hpp"
 #include "vendor/opengl/glext.h"
 #include "vertex_data.hpp"
 #include <cstddef>
@@ -11,67 +13,18 @@
 #include <iterator>
 
 
-namespace
-{
-    constexpr game::VertexData vertex_data[] = {
-        // Predná stena (+Z) -> normála {0.0f, 0.0f, 1.0f}
-        {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 0
-        {{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},  // 1
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},   // 2
-        {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},  // 3
-
-        // Zadná stena (-Z) -> normála {0.0f, 0.0f, -1.0f}
-        {{0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}},  // 4
-        {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}}, // 5
-        {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}},  // 6
-        {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}},   // 7
-
-        // Pravá stena (+X) -> normála {1.0f, 0.0f, 0.0f}
-        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},  // 8
-        {{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, // 9
-        {{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},  // 10
-        {{0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},   // 11
-
-        // Ľavá stena (-X) -> normála {-1.0f, 0.0f, 0.0f}
-        {{-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 12
-        {{-0.5f, -0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  // 13
-        {{-0.5f, 0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},   // 14
-        {{-0.5f, 0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},  // 15
-
-        // Horná stena (+Y) -> normála {0.0f, 1.0f, 0.0f}
-        {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},  // 16
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},   // 17
-        {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},  // 18
-        {{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}, // 19
-
-        // Spodná stena (-Y) -> normála {0.0f, -1.0f, 0.0f}
-        {{-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}}, // 20
-        {{0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},  // 21
-        {{0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},   // 22
-        {{-0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}}   // 23
-    };
-
-    constexpr GLuint indices[] = {
-        0,  1,  2,  2,  3,  0,  // Predná
-        4,  5,  6,  6,  7,  4,  // Zadná
-        8,  9,  10, 10, 11, 8,  // Pravá
-        12, 13, 14, 14, 15, 12, // Ľavá
-        16, 17, 18, 18, 19, 16, // Horná
-        20, 21, 22, 22, 23, 20  // Spodná
-    };  
-} // namespace
 
 namespace game
 {
-    Mesh::Mesh()
+    Mesh::Mesh(const MeshData& data)
         : m_vao({0u, [](auto vao) { ::glDeleteVertexArrays(1, &vao); }}),
-          m_vbo{sizeof(vertex_data) + sizeof(indices)}, m_index_count(sizeof(indices) / sizeof(GLuint)),
-          m_index_offset(sizeof(vertex_data))
+          m_vbo{static_cast<std::uint32_t>(data.vertices.size_bytes() + data.indices.size_bytes())}, m_index_count(static_cast<std::uint32_t>(data.indices.size())),
+          m_index_offset(data.vertices.size_bytes())
     {
         {
             BufferWriter writer{m_vbo};
-            writer.write(vertex_data);
-            writer.write(indices);
+            writer.write(data.vertices);
+            writer.write(data.indices);
         }
 
         ::glCreateVertexArrays(1, &m_vao);

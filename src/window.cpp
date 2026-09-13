@@ -219,6 +219,7 @@ namespace
     void  setup_opengl_debug()
     {
         ::glEnable(GL_DEBUG_OUTPUT);
+        ::glEnable(GL_CULL_FACE);
         ::glDebugMessageCallback(opengl_debug_callback, nullptr);
 
     }

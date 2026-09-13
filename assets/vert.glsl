@@ -18,6 +18,7 @@ void main()
 {
     gl_Position = projection * view * model * vec4(i_position, 1.0);
     o_texture_coords = i_texture_coords;
-    o_normal = normalize((model * vec4(i_normal, 0.0f)).xyz);
+    o_normal = normalize(transpose(inverse(mat3(model))) * i_normal) ; 
+    // TOTO TREBA POSIELAT CEZ UNIFROM A VYPOCITAT NA CPU
     frag_pos = model * vec4(i_position, 1);
 }

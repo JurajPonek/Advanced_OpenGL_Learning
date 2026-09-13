@@ -15,6 +15,7 @@ add_executable(game main.cpp
                     sampler.cpp
                     debug_ui.cpp
                     mouse_button_evet.cpp
+                    mesh_loader.cpp
                     
 )
 target_include_directories(game PUBLIC ${PROJECT_SOURCE_DIR})

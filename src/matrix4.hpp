@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <span>
+#include "src/vector3.hpp"
 #include "vector3.hpp"
 
 namespace game
@@ -32,6 +33,11 @@ namespace game
                             translation.x,translation.y,translation.z,1.0f})
             {
 
+            }
+            constexpr Matrix4(const Vector3& translation, const Vector3& scale)
+                : m_data({scale.x, 0.0f, 0.0f, 0.0f, 0.0f, scale.y, 0.0f, 0.0f, 0.0f, 0.0f, scale.z, 0.0f, translation.x,
+                          translation.y, translation.z, 1.0f})
+            {
             }
 
             constexpr std::span<const float, 16> data() const

@@ -9,6 +9,7 @@
 #include "log.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
+#include "mesh_loader.hpp"
 #include "mouse_button_evet.hpp"
 #include "mouse_event.hpp"
 #include "opengl.hpp"
@@ -17,6 +18,8 @@
 #include "sampler.hpp"
 #include "scene.hpp"
 #include "shader.hpp"
+#include "mesh_loader.hpp"
+#include "src/vector3.hpp"
 #include "stop_event.hpp"
 #include "texture.hpp"
 #include "vector3.hpp"
@@ -124,31 +127,35 @@ int main(int argc, char** argv)
         game::ensure(argc == 2, "./game.exe <root_path>");
         game::Window window{1920u, 1080u};
         game::ResourceLoader resource_loader{argv[1]};
-        game::Texture texture{resource_loader.load_binary("container2.png"), 500, 500};
-        game::Texture texture_spec{resource_loader.load_binary("container2_specular.png"), 500, 500};
+        game::MeshLoader mesh_loader{resource_loader};
+        game::Texture texture{resource_loader.load_binary("lambert2_BC.png"), 4096, 4096};
+        //game::Texture texture_spec{resource_loader.load_binary("specular.jpg"), 4096, 4096};
         game::Sampler sampler{};
-        const game::Texture* textures[]{&texture, &texture_spec};
-        const game::Sampler* samplers[]{&sampler, &sampler};
+        const game::Texture* textures[]{&texture};
+        const game::Sampler* samplers[]{&sampler};
         const auto tex_samp = std::views::zip(textures, samplers) | std::ranges::to<std::vector>();
         const auto vertex_shader = game::Shader(resource_loader.load_string("vert.glsl"), game::ShaderType::VERTEX);
         const auto fragment_shader =
             game::Shader(resource_loader.load_string("frag.glsl"), game::ShaderType::FRAGMENT);
         auto material = game::Material{vertex_shader, fragment_shader};
-        auto mesh = game::Mesh{};
+        auto mesh = game::Mesh{mesh_loader.load("revolver.fbx")};
         const auto renderer = game::Renderer{};
         std::random_device rd{};
         std::mt19937 gen{rd()};
         std::uniform_real_distribution dist(-5.0f, 5.0f);
         std::vector<game::Entity> entities{};
-        for (auto i{-10}; i < 10; i++)
-        {
-            for (auto j{-10}; j < 10; j++)
-            {
-                entities.emplace_back(&mesh, &material,
-                                      game::Vector3{static_cast<float>(i) * 2.5f, dist(gen), static_cast<float>(j) * 2.5f},
-                                      tex_samp);
-            }
-        }
+        entities.emplace_back(&mesh, &material,
+                                     game::Vector3{1.0f, 1.0f, 1.0f}, game::Vector3{1.0f},
+                                       tex_samp);
+        // for (auto i{-10}; i < 10; i++)
+        // {
+        //     for (auto j{-10}; j < 10; j++)
+        //     {
+        //         entities.emplace_back(&mesh, &material,
+        //                               game::Vector3{static_cast<float>(i) * 2.5f, dist(gen), static_cast<float>(j) * 2.5f}, game::Vector3{1.0f},
+        //                               tex_samp);
+        //     }
+        // }
 
         auto scene = game::Scene{entities | std::views::transform([](const auto& e) { return &e; }) |
                                      std::ranges::to<std::vector>(),
