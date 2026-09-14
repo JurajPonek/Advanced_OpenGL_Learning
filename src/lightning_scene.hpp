@@ -6,6 +6,7 @@
 #include "entity.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
+#include "renderer.hpp"
 #include "resource_loader.hpp"
 #include "sampler.hpp"
 #include "scene.hpp"
@@ -35,7 +36,7 @@ namespace game
         };
 
       public:
-        LightningScene(ResourceLoader& resource_loader, Window* window, Camera* camera);
+        LightningScene(ResourceLoader& resource_loader, Window* window, Camera* camera, Renderer* renderer);
         virtual void on_render() override;
         virtual void on_update(float dt) override;
         virtual void on_imgui_render() override;
@@ -48,12 +49,12 @@ namespace game
         DirectionalLight m_directional;
         std::vector<PointLight> m_points;
         Camera* m_camera;
-        Buffer m_camera_buffer;
         Buffer m_light_buffer;
         std::unique_ptr<Texture> m_texture;
         std::unique_ptr<Texture> m_texture_spec;
         std::unique_ptr<Sampler> m_sampler;
         std::unique_ptr<Material> m_material;
         std::unique_ptr<Mesh> m_mesh;
+        Renderer* m_renderer;
     };
 } // namespace game

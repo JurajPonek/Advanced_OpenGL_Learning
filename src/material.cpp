@@ -81,7 +81,7 @@ namespace game
         ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
         ::glUniform1i(uniform->second, obj);
     }
-    void Material::bind_texture(std::uint32_t index, const Texture* texture, const Sampler*sampler) const
+    void Material::bind_texture(std::uint32_t index, const Texture* texture, const Sampler* sampler) const
     {
         ::glBindTextureUnit(index, texture->get_native_handle());
         ::glBindSampler(index, sampler->get_native_handle());

@@ -12,20 +12,10 @@
 
 namespace game
 {
-    SceneManager::SceneManager(const Window& window) : m_scenes{}, m_current{nullptr}
+    SceneManager::SceneManager() : m_scenes{}, m_current{nullptr}
     {
-        ::IMGUI_CHECKVERSION();
-        ::ImGui::CreateContext();
-        ::ImGui::StyleColorsDark();
-        ::ImGui_ImplWin32_InitForOpenGL(window.get_native_handle());
-        ::ImGui_ImplOpenGL3_Init();
     }
-    SceneManager::~SceneManager()
-    {
-        ::ImGui_ImplOpenGL3_Shutdown();
-        ::ImGui_ImplWin32_Shutdown();
-        ::ImGui::DestroyContext();
-    }
+    
     void SceneManager::reset()
     {
         ::glDisable(GL_STENCIL_TEST);

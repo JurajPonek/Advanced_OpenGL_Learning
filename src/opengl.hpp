@@ -91,6 +91,7 @@
     DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)                                                            \
     DO(PFNGLBINDBUFFERBASEPROC, glBindBufferBase)                                                                      \
     DO(PFNGLGETACTIVEUNIFORMPROC, glGetActiveUniform)                                                                  \
+    DO(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer)
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;
 FOR_OPENGL_FUNCTIONS(DO_DEFINE)

@@ -8,6 +8,7 @@
 #include "mesh.hpp"
 #include "mesh_loader.hpp"
 #include "opengl.hpp"
+#include "renderer.hpp"
 #include "resource_loader.hpp"
 #include "sampler.hpp"
 #include "shader.hpp"
@@ -44,11 +45,12 @@ namespace
 
 namespace game
 {
-    LightningScene::LightningScene(ResourceLoader& resource_loader,Window* window, Camera* camera)
+    LightningScene::LightningScene(ResourceLoader& resource_loader, Window* window, Camera* camera, Renderer* renderer)
         : m_entities{}, m_ambient{0.3f, 0.3f, 0.3f}, m_directional{{0.0f, -1.0f, .0f}, {.0f, .0f, .0f}},
           m_points{{{0.0f, 5.0f, 1.0f}, {0.5f, 0.5f, 0.5f}, 1.0f, 0.07f, 0.0017f},
                    {{-5.0f, 5.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, 1.0f, 0.07f, 0.0017f}},
-          m_camera{camera}, m_camera_buffer{sizeof(Matrix4) * 2 + sizeof(Vector3)}, m_light_buffer(10240u)
+          m_camera{camera}, m_light_buffer{10240u}, m_renderer{renderer}
+
 
     {
         MeshLoader mesh_loader{resource_loader};
@@ -83,12 +85,7 @@ namespace game
     void LightningScene::on_render() 
     {
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        {
-            BufferWriter writer{m_camera_buffer};
-            writer.write(m_camera->get_view());
-            writer.write(m_camera->get_projection());
-            writer.write(m_camera->get_position());
-        }
+        m_renderer->set_camera(m_camera);
 
         {
             LightBuffer light_buffer{m_ambient, m_directional.direction, m_directional.color, static_cast<int>(m_points.size())};
@@ -100,18 +97,10 @@ namespace game
                 writer.write(point_light_buffer);
             }
         }
-        ::glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_camera_buffer.get_native_handle());
         ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_light_buffer.get_native_handle());
         for(const auto& entity : m_entities)
         {
-            const auto* material = entity.get_material();         
-            const auto* mesh = entity.get_mesh();
-            material->use();
-            material->set_uniform("model", entity.get_model_matrix());
-            material->bind_textures(entity.get_textures()); 
-            mesh->bind();
-            ::glDrawElements(GL_TRIANGLES, mesh->get_index_count(), GL_UNSIGNED_INT, reinterpret_cast<void*>(mesh->get_index_offset()));
-            mesh->unbind();
+            m_renderer->draw_mesh(entity.get_mesh(), entity.get_material(), entity.get_model_matrix(),entity.get_textures());
         }
 
     }
@@ -187,8 +176,6 @@ namespace game
     }
     void LightningScene::on_detach() 
     {
-        ::glDisable(GL_DEPTH_TEST);
-        ::glDisable(GL_CULL_FACE);
     }
 
 

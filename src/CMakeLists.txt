@@ -13,12 +13,12 @@ add_executable(game main.cpp
                     resource_loader.cpp
                     texture.cpp
                     sampler.cpp
-                    debug_ui.cpp
                     mouse_button_evet.cpp
                     mesh_loader.cpp
                     scene.cpp
                     clear_color_scene.cpp
                     lightning_scene.cpp
+                    application.cpp
                     
 )
 target_include_directories(game PUBLIC ${PROJECT_SOURCE_DIR})
