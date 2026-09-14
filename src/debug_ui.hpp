@@ -3,6 +3,7 @@
 #include "camera.hpp"
 #include "imgui.h"
 #include "mouse_button_evet.hpp"
+#include "Dscene.hpp"
 #include "scene.hpp"
 #include <windows.h>
 

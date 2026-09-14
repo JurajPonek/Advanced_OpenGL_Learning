@@ -90,7 +90,7 @@
     DO(PFNGLDEBUGMESSAGECALLBACKPROC, glDebugMessageCallback)                                                          \
     DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)                                                            \
     DO(PFNGLBINDBUFFERBASEPROC, glBindBufferBase)                                                                      \
-    DO(PFNGLGETACTIVEUNIFORMPROC, glGetActiveUniform)
+    DO(PFNGLGETACTIVEUNIFORMPROC, glGetActiveUniform)                                                                  \
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;
 FOR_OPENGL_FUNCTIONS(DO_DEFINE)

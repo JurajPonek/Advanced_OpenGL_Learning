@@ -4,7 +4,7 @@
 #include "material.hpp"
 #include "opengl.hpp"
 #include "matrix4.hpp"
-#include "scene.hpp"
+#include "Dscene.hpp"
 #include "vector3.hpp"
 #include <gl/gl.h>
 #include <ranges>
@@ -38,7 +38,7 @@ namespace game
     {
 
     }
-    void Renderer::render(const Camera& camera, const Scene& scene) const
+    void Renderer::render(const Camera& camera, const DScene& scene) const
     {
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         {
