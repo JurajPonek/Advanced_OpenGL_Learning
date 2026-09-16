@@ -17,6 +17,7 @@ namespace game
     {
       
       public:
+        Texture(std::span<const std::byte> data);
         Texture(std::span<const std::byte> data, std::uint32_t width, std::uint32_t height);
         Texture(TextureUsage usage, std::uint32_t width, std::uint32_t height);
         

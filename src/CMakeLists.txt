@@ -21,6 +21,7 @@ add_executable(game main.cpp
                     application.cpp
                     frame_buffer_scene.cpp
                     framebuffer.cpp
+                    cubemap.cpp
                     
 )
 target_include_directories(game PUBLIC ${PROJECT_SOURCE_DIR})

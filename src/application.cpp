@@ -8,6 +8,7 @@
 #include "key.hpp"
 #include "key_event.hpp"
 #include "lightning_scene.hpp"
+#include "mesh_loader.hpp"
 #include "mouse_button_evet.hpp"
 #include "mouse_event.hpp"
 #include "renderer.hpp"
@@ -51,6 +52,7 @@ namespace game
         try
         {
             ResourceLoader resource_loader{"../assets/"};
+            MeshLoader mesh_loader{resource_loader};
             auto camera = Camera{{0.0f, 0.0f, 6.0f},
                                        {0.0f, 1.0f, 0.0f},
                                        {0.0f, 1.0f, 0.0f},
@@ -60,13 +62,13 @@ namespace game
                                        0.1,
                                        100.0f};
             SceneManager manager{};
-            Renderer renderer{};
+            Renderer renderer{mesh_loader, resource_loader,};
 
             manager.add_scene<ClearColorScene>("ClearColorScene");
             manager.add_scene<LightningScene>("LightningScene", resource_loader, &m_window, &camera, &renderer);
-            manager.add_scene<FrameBufferScene>("FrameBufferScene", resource_loader, &m_window, &camera, &renderer);
+            manager.add_scene<FrameBufferScene>("FrameBufferScene", resource_loader, &m_window, &camera, &renderer, &mesh_loader);
             manager.set_startup_scene([&]()
-                { return std::make_unique<FrameBufferScene>(resource_loader, &m_window, &camera, &renderer); });
+                { return std::make_unique<FrameBufferScene>(resource_loader, &m_window, &camera, &renderer, &mesh_loader); });
 
 
                 auto running = true;
