@@ -56,6 +56,8 @@ namespace game
         ::ImGui_ImplOpenGL3_NewFrame();
         ::ImGui_ImplWin32_NewFrame();
         ::ImGui::NewFrame();
+        ::ImGuiIO& io = ImGui::GetIO();
+        ::ImGui::LabelText("FPS", "%0.1f", io.Framerate);
         if (m_current && ImGui::Button("Return"))
         {
             m_current->on_detach();

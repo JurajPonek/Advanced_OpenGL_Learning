@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <span>
 #include "src/vector3.hpp"
@@ -64,7 +65,8 @@ namespace game
             }
             friend constexpr Matrix4& operator*=(Matrix4& mat1, const Matrix4& mat2);
             friend constexpr Matrix4 operator*(const Matrix4& mat1, const Matrix4& mat2);
-            
+            friend constexpr Vector3 operator*(const Matrix4& mat, const Vector3& vec);
+
             inline static constexpr Matrix4 perspective(float fov_radians, float width, float height, float near_p, float far_p)
             {
                 const float aspect = width / height;
@@ -80,12 +82,41 @@ namespace game
                 matrix.m_data[15] = 0.0f;
 
                 return matrix;
-            }   
-        private:
+            }
+
+            inline static constexpr Matrix4 rotate(const Matrix4& mat, float angle, Vector3 vector)
+            {
+                auto c = std::cos(angle);
+                auto s = std::sin(angle);
+                auto t = 1 - c;
+                vector = Vector3::normalize(vector);
+                Matrix4 tmp{};
+                tmp.m_data[0]= t * vector.x * vector.x + c;
+                tmp.m_data[4] = t * vector.x * vector.y + vector.z * s;
+                tmp.m_data[8] = t * vector.x * vector.z - vector.y * s;
+                tmp.m_data[1] = t * vector.x * vector.y - vector.z * s;
+                tmp.m_data[5] = t * vector.y * vector.y + c;
+                tmp.m_data[9] = t * vector.z * vector.y + vector.x * s;
+                tmp.m_data[2] = t * vector.x * vector.z +  vector.y * s;
+                tmp.m_data[6] = t * vector.y * vector.z - vector.x * s;
+                tmp.m_data[10] = t * vector.z * vector.z + c;
+                return mat * tmp;
+
+            }
+
+          private:
             std::array<float, 16> m_data;
 
     };
 
+    constexpr Vector3 operator*(const Matrix4& mat, const Vector3& vec) 
+    {
+        Vector3 res{};
+        res.x = mat.m_data[0] * vec.x + mat.m_data[1] * vec.y + mat.m_data[2] * vec.z;
+        res.y = mat.m_data[4] * vec.x + mat.m_data[5] * vec.y + mat.m_data[6] * vec.z;
+        res.z = mat.m_data[8] * vec.x + mat.m_data[9] * vec.y + mat.m_data[10] * vec.z;
+        return res;    
+    }
     constexpr Matrix4& operator*=(Matrix4& mat1, const Matrix4& mat2)
     {
         auto res = Matrix4{};

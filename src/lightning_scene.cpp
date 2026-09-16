@@ -118,7 +118,6 @@ namespace game
             m_points.push_back(m_points.back());
             selected_point = m_points.size() - 1u;
         }
-        ::ImGui::LabelText("FPS", "%0.1f", io.Framerate);
         if (::ImGui::CollapsingHeader("ambient"))
         {
             float colors[3]{};

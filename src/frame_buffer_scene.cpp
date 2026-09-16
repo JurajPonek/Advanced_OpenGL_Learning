@@ -1,13 +1,16 @@
 #include "frame_buffer_scene.hpp"
 #include "camera.hpp"
+#include "imgui.h"
 #include "mesh.hpp"
 #include "opengl.hpp"
 #include "renderer.hpp"
 #include "resource_loader.hpp"
+#include "src/matrix4.hpp"
 #include "texture.hpp"
 #include "window.hpp"
 #include <gl/gl.h>
 #include <memory>
+#include <numbers>
 
 namespace game
 {
@@ -15,7 +18,7 @@ namespace game
                                        Renderer* renderer)
         : m_entities{}, 
           m_camera{camera}, m_renderer{renderer},
-          m_fbo{window->get_width(), window->get_height()}
+          m_fbo{512, 256}
 
     {
         MeshLoader mesh_loader{resource_loader};
@@ -50,6 +53,7 @@ namespace game
         m_fbo.bind();
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ::glEnable(GL_DEPTH_TEST);
+        m_camera->rotate(std::numbers::pi_v<float>, {0.0f,1.0f,0.0f});
         m_renderer->set_camera(m_camera);
         for (const auto& entity : m_entities)
         {
@@ -57,9 +61,19 @@ namespace game
                                   entity.get_textures());
         }
         m_fbo.unbind();
-        ::glClear(GL_COLOR_BUFFER_BIT);
-        ::glDisable(GL_DEPTH_TEST);
-        m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_fbo); 
+        ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        ::glEnable(GL_DEPTH_TEST);
+        m_camera->rotate(-std::numbers::pi_v<float>, {0.0f, 1.0f, 0.0f});
+        m_renderer->set_camera(m_camera);
+        for (const auto& entity : m_entities)
+        {
+            m_renderer->draw_mesh(entity.get_mesh(), entity.get_material(), entity.get_model_matrix(),
+                                  entity.get_textures());
+        }
+        // ::glDisable(GL_DEPTH_TEST);
+        // ::glViewport(100, 100, m_fbo.get_width(), m_fbo.get_height());
+        // m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_fbo);
+        // ::glViewport(0, 0, 1920, 1080);
     }
     void FrameBufferScene::on_imgui_render()
     {

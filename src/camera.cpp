@@ -1,5 +1,6 @@
 #include "camera.hpp"
 #include "matrix4.hpp"
+#include "src/matrix4.hpp"
 #include "vector3.hpp"
 #include <cmath>
 #include <span>
@@ -28,6 +29,7 @@ namespace game
         m_view = Matrix4::look_at(m_position, m_position + m_direction, m_up);
     }
 
+
     std::span<const float> Camera::get_view() const { return m_view.data(); }
     std::span<const float> Camera::get_projection() const { return m_projection.data(); }
 
@@ -51,9 +53,18 @@ namespace game
         m_direction = create_direction(m_pitch, m_yaw);
         m_view = Matrix4::look_at(m_position, m_position + m_direction, m_up);
     }
-    Vector3 Camera::get_position() const
+    Vector3 Camera::get_position() const { return m_position; }
+
+    void Camera::rotate(float angle, Vector3 vector)
     {
-        return m_position;
+        Matrix4 mat{};
+        auto tmp = Matrix4::rotate(mat, angle, vector);
+        m_direction = Vector3::normalize(tmp * m_direction);
+        m_up = Vector3::normalize(tmp * m_up);
+        m_view = Matrix4::look_at(m_position, m_position + m_direction, m_up);
+        m_pitch = std::asin(m_direction.y);
+        m_yaw = std::atan2(m_direction.z, m_direction.x);
+
     }
 
 } // namespace game

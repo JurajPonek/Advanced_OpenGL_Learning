@@ -20,6 +20,7 @@ namespace game
             Vector3 get_position() const;
             void adjust_yaw(float adjust);
             void adjust_pitch(float adjust);
+            void rotate(float angle, Vector3 vector);
         private:
             Matrix4 m_view;
             Matrix4 m_projection;
