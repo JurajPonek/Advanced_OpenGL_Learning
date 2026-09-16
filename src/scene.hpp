@@ -41,6 +41,7 @@ namespace game
         void render();
         void update(float dt);
         void render_ui();
+        void set_startup_scene(const std::function<std::unique_ptr<Scene>()>& scene);
       private:
         StringMap<std::function<std::unique_ptr<Scene>()>> m_scenes;
         std::unique_ptr<Scene> m_current;

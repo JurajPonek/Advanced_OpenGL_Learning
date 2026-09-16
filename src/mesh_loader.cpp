@@ -2,20 +2,24 @@
 #include "assimp/mesh.h"
 #include "assimp/vector3.h"
 #include "error.hpp"
+#include "log.hpp"
 #include "resource_loader.hpp"
 #include "src/vector3.hpp"
 #include "src/vertex_data.hpp"
 #include "vector3.hpp"
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <numbers>
 #include <ranges>
 #include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include "log.hpp"
+
 namespace
 {
     template <typename... Args> std::vector<game::VertexData> vertices(Args&&... args)
@@ -29,19 +33,18 @@ namespace
 
 namespace game
 {
-    MeshLoader::MeshLoader(ResourceLoader& resource_loader)
-        :m_resource_loader(resource_loader)
-    {
-
-    }
+    MeshLoader::MeshLoader(ResourceLoader& resource_loader) : m_resource_loader(resource_loader) {}
 
     MeshData MeshLoader::load(std::string_view model_file, std::string_view model_name)
     {
         const auto model_file_data = m_resource_loader.load_binary(model_file);
         ensure(!model_file_data.empty(), "No model data!");
         ::Assimp::Importer importer{};
-        const auto* scene = importer.ReadFileFromMemory(model_file_data.data(), model_file_data.size(), ::aiProcess_Triangulate | ::aiProcess_FlipUVs | ::aiProcess_CalcTangentSpace);
-        ensure((scene != nullptr) && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE), "failed to load model {} {}", model_file, model_name);
+        const auto* scene =
+            importer.ReadFileFromMemory(model_file_data.data(), model_file_data.size(),
+                                        ::aiProcess_Triangulate | ::aiProcess_FlipUVs | ::aiProcess_CalcTangentSpace);
+        ensure((scene != nullptr) && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE), "failed to load model {} {}",
+               model_file, model_name);
         const auto loaded_meshes = std::span<::aiMesh*>{scene->mMeshes, scene->mNumMeshes};
         log::debug("Found meshes {}", loaded_meshes.size());
         for (const auto* mesh : loaded_meshes)
@@ -51,11 +54,12 @@ namespace game
             {
                 continue;
             }
-            const auto to_vector3 = [](const ::aiVector3D& v){return Vector3{v.x, v.y, v.z};};
+            const auto to_vector3 = [](const ::aiVector3D& v) { return Vector3{v.x, v.y, v.z}; };
             const auto positions = std::span<::aiVector3D>{mesh->mVertices, mesh->mVertices + mesh->mNumVertices} |
                                    std::views::transform(to_vector3);
 
-            const auto normals = std::span<::aiVector3D>{mesh->mNormals, mesh->mNormals + mesh->mNumVertices} | std::views::transform(to_vector3);
+            const auto normals = std::span<::aiVector3D>{mesh->mNormals, mesh->mNormals + mesh->mNumVertices} |
+                                 std::views::transform(to_vector3);
             std::vector<UV> uvs{};
             ensure(mesh->HasTextureCoords(0), "Mesh doesnt have tex coords");
             for (auto i{0u}; i < mesh->mNumVertices; ++i)
@@ -72,8 +76,9 @@ namespace game
                     indices.push_back(face.mIndices[j]);
                 }
             }
-            
-                m_loaded_meshes.emplace(mesh->mName.C_Str(), LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
+
+            m_loaded_meshes.emplace(mesh->mName.C_Str(),
+                                    LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
         }
 
         const auto loaded = m_loaded_meshes.find(model_name);
@@ -82,14 +87,12 @@ namespace game
     }
     MeshData MeshLoader::load(std::string_view model_file)
     {
-        // 1. Cache
         const auto loaded = m_loaded_meshes.find(model_file);
         if (loaded != std::ranges::cend(m_loaded_meshes))
         {
             return {loaded->second.vertices, loaded->second.indices};
         }
 
-        // 2. Načítanie súboru
         const auto model_file_data = m_resource_loader.load_binary(model_file);
         ensure(!model_file_data.empty(), "No model data for file {}", model_file);
 
@@ -107,12 +110,10 @@ namespace game
         std::vector<VertexData> all_vertices;
         std::vector<std::uint32_t> all_indices;
 
-        // 3. Prejdeme VŠETKY sub-meshe v modeli a spojíme ich
         for (unsigned int m = 0; m < scene->mNumMeshes; ++m)
         {
             const auto* mesh = scene->mMeshes[m];
 
-            // Offset pre indexy tohto sub-meshu
             const auto vertex_offset = static_cast<std::uint32_t>(all_vertices.size());
 
             const auto to_vector3 = [](const ::aiVector3D& v) { return Vector3{v.x, v.y, v.z}; };
@@ -137,12 +138,10 @@ namespace game
                 }
             }
 
-            // Vytvoríme vrcholy aktuálneho meshu a pridáme ich k celku
             auto current_vertices = vertices(positions, normals, uvs);
             all_vertices.insert(all_vertices.end(), std::make_move_iterator(current_vertices.begin()),
                                 std::make_move_iterator(current_vertices.end()));
 
-            // Indexy s posunom o vertex_offset!
             for (auto i{0u}; i < mesh->mNumFaces; ++i)
             {
                 const auto& face = mesh->mFaces[i];
@@ -156,7 +155,6 @@ namespace game
         log::debug("Loaded model {} with {} vertices and {} indices across {} meshes", model_file, all_vertices.size(),
                    all_indices.size(), scene->mNumMeshes);
 
-        // 4. Uloženie celého zlúčeného batohu do cache
         const auto [it, inserted] =
             m_loaded_meshes.emplace(model_file, LoadedMeshData{std::move(all_vertices), std::move(all_indices)});
 
@@ -170,41 +168,18 @@ namespace game
         {
             return {loaded->second.vertices, loaded->second.indices};
         }
-        const Vector3 positions[] = {// Predná strana (+Z) - OK
-                                     {-1.0f, -1.0f, 1.0f},
-                                     {1.0f, -1.0f, 1.0f},
-                                     {1.0f, 1.0f, 1.0f},
-                                     {-1.0f, 1.0f, 1.0f},
+        const Vector3 positions[] = {
+            {-1.0f, -1.0f, 1.0f},  {1.0f, -1.0f, 1.0f},   {1.0f, 1.0f, 1.0f},   {-1.0f, 1.0f, 1.0f},
 
-                                     // Zadná strana (-Z) - OPRAVENÉ (bolo otočené dovnútra)
-                                     {1.0f, -1.0f, -1.0f},
-                                     {-1.0f, -1.0f, -1.0f},
-                                     {-1.0f, 1.0f, -1.0f},
-                                     {1.0f, 1.0f, -1.0f},
+            {1.0f, -1.0f, -1.0f},  {-1.0f, -1.0f, -1.0f}, {-1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, -1.0f},
 
-                                     // Ľavá strana (-X) - OK
-                                     {-1.0f, -1.0f, -1.0f},
-                                     {-1.0f, -1.0f, 1.0f},
-                                     {-1.0f, 1.0f, 1.0f},
-                                     {-1.0f, 1.0f, -1.0f},
+            {-1.0f, -1.0f, -1.0f}, {-1.0f, -1.0f, 1.0f},  {-1.0f, 1.0f, 1.0f},  {-1.0f, 1.0f, -1.0f},
 
-                                     // Pravá strana (+X) - OPRAVENÉ (bolo otočené dovnútra)
-                                     {1.0f, -1.0f, 1.0f},
-                                     {1.0f, -1.0f, -1.0f},
-                                     {1.0f, 1.0f, -1.0f},
-                                     {1.0f, 1.0f, 1.0f},
+            {1.0f, -1.0f, 1.0f},   {1.0f, -1.0f, -1.0f},  {1.0f, 1.0f, -1.0f},  {1.0f, 1.0f, 1.0f},
 
-                                     // Horná strana (+Y) - OK
-                                     {-1.0f, 1.0f, 1.0f},
-                                     {1.0f, 1.0f, 1.0f},
-                                     {1.0f, 1.0f, -1.0f},
-                                     {-1.0f, 1.0f, -1.0f},
+            {-1.0f, 1.0f, 1.0f},   {1.0f, 1.0f, 1.0f},    {1.0f, 1.0f, -1.0f},  {-1.0f, 1.0f, -1.0f},
 
-                                     // Spodná strana (-Y) - OK (upravené poradie pre správnu orientáciu textúry)
-                                     {-1.0f, -1.0f, -1.0f},
-                                     {1.0f, -1.0f, -1.0f},
-                                     {1.0f, -1.0f, 1.0f},
-                                     {-1.0f, -1.0f, 1.0f}};
+            {-1.0f, -1.0f, -1.0f}, {1.0f, -1.0f, -1.0f},  {1.0f, -1.0f, 1.0f},  {-1.0f, -1.0f, 1.0f}};
 
         const Vector3 normals[] = {{0.0f, 0.0f, 1.0f},  {0.0f, 0.0f, 1.0f},  {0.0f, 0.0f, 1.0f},  {0.0f, 0.0f, 1.0f},
                                    {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, -1.0f},
@@ -213,7 +188,7 @@ namespace game
                                    {0.0f, 1.0f, 0.0f},  {0.0f, 1.0f, 0.0f},  {0.0f, 1.0f, 0.0f},  {0.0f, 1.0f, 0.0f},
                                    {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}};
 
-        const UV uvs[] = {{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}, {0, 0.0f}, {1.0f, 0.0f},
+        const UV uvs[] = {{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}, {0, 0.0f},    {1.0f, 0.0f},
                           {1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
                           {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
                           {1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}};
@@ -223,6 +198,84 @@ namespace game
                                                     16, 17, 18, 18, 19, 16, 20, 21, 22, 22, 23, 20};
         const auto new_item =
             m_loaded_meshes.emplace("cube", LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
+        return {new_item.first->second.vertices, new_item.first->second.indices};
+    }
+    MeshData MeshLoader::plane()
+    {
+        const auto loaded = m_loaded_meshes.find("plane");
+        if (loaded != std::ranges::cend(m_loaded_meshes))
+        {
+            return {loaded->second.vertices, loaded->second.indices};
+        }
+        const Vector3 positions[] = {{-1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, -1.0f}};
+        const Vector3 normals[] = {// X,     Y,     Z
+                                   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
+        const UV uvs[] = {
+
+            {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}};
+        const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
+        const auto new_item =
+            m_loaded_meshes.emplace("plane", LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
+        return {new_item.first->second.vertices, new_item.first->second.indices};
+    }
+    MeshData MeshLoader::sphere()
+    {
+        const auto loaded = m_loaded_meshes.find("sphere");
+        if (loaded != std::ranges::cend(m_loaded_meshes))
+        {
+            return {loaded->second.vertices, loaded->second.indices};
+        }
+
+        static constexpr size_t xSegments = 36;
+        static constexpr size_t ySegments = 18;
+        constexpr float pi = std::numbers::pi_v<float>;
+
+        std::vector<Vector3> positions;
+        std::vector<Vector3> normals;
+        std::vector<UV> uvs;
+        std::vector<uint32_t> indices{};
+
+        positions.reserve((xSegments + 1) * (ySegments + 1));
+        normals.reserve((xSegments + 1) * (ySegments + 1));
+        uvs.reserve((xSegments + 1) * (ySegments + 1));
+        indices.reserve(xSegments * ySegments * 6);
+
+        for (size_t y = 0; y <= ySegments; ++y)
+        {
+            for (size_t x = 0; x <= xSegments; ++x)
+            {
+                float xSegment = static_cast<float>(x) / static_cast<float>(xSegments);
+                float ySegment = static_cast<float>(y) / static_cast<float>(ySegments);
+
+                float xPos = std::cos(xSegment * pi * 2.0f) * std::sin(ySegment * pi);
+                float yPos = std::cos(ySegment * pi);
+                float zPos = std::sin(xSegment * pi * 2.0f) * std::sin(ySegment * pi);
+
+                positions.emplace_back(xPos, yPos, zPos);
+                normals.emplace_back(xPos, yPos, zPos); 
+                uvs.emplace_back(xSegment, ySegment);
+            }
+        }
+
+        for (size_t y = 0; y < ySegments; ++y)
+        {
+            for (size_t x = 0; x < xSegments; ++x)
+            {
+                uint32_t current = static_cast<uint32_t>(y * (xSegments + 1) + x);
+                uint32_t next = static_cast<uint32_t>((y + 1) * (xSegments + 1) + x);
+
+                indices.push_back(current);
+                indices.push_back(current + 1);
+                indices.push_back(next);
+
+                indices.push_back(current + 1);
+                indices.push_back(next + 1);
+                indices.push_back(next);
+            }
+        }
+
+        const auto new_item =
+            m_loaded_meshes.emplace("sphere", LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
         return {new_item.first->second.vertices, new_item.first->second.indices};
     }
 } // namespace game

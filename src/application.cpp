@@ -13,11 +13,14 @@
 #include "renderer.hpp"
 #include "resource_loader.hpp"
 #include "scene.hpp"
+#include "src/frame_buffer_scene.hpp"
 #include "src/vector3.hpp"
 #include "stop_event.hpp"
 #include "window.hpp"
 #include <chrono>
 #include <concepts>
+#include <functional>
+#include <memory>
 #include <numbers>
 #include <print>
 #include <type_traits>
@@ -61,9 +64,12 @@ namespace game
 
             manager.add_scene<ClearColorScene>("ClearColorScene");
             manager.add_scene<LightningScene>("LightningScene", resource_loader, &m_window, &camera, &renderer);
+            manager.add_scene<FrameBufferScene>("FrameBufferScene", resource_loader, &m_window, &camera, &renderer);
+            manager.set_startup_scene([&]()
+                { return std::make_unique<FrameBufferScene>(resource_loader, &m_window, &camera, &renderer); });
 
 
-            auto running = true;
+                auto running = true;
             auto key_states = std::unordered_map<Key, bool>{};
             auto last_time = std::chrono::high_resolution_clock::now();
             float speed = 20.0f;

@@ -19,6 +19,8 @@ add_executable(game main.cpp
                     clear_color_scene.cpp
                     lightning_scene.cpp
                     application.cpp
+                    frame_buffer_scene.cpp
+                    framebuffer.cpp
                     
 )
 target_include_directories(game PUBLIC ${PROJECT_SOURCE_DIR})

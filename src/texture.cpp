@@ -1,8 +1,10 @@
 #include "texture.hpp"
 #include "opengl.hpp"
 #include <cstdint>
+#include <gl/gl.h>
 #include <memory>
 #include "error.hpp"
+#include "vendor/opengl/glext.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include  <stb_image.h>
 namespace game
@@ -24,6 +26,24 @@ namespace game
         ::glTextureStorage2D(m_handle, 1, GL_RGBA8, width, height);
         ::glTextureSubImage2D(m_handle, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, raw_data.get());
         
+    }
+    Texture::Texture(TextureUsage usage, std::uint32_t width, std::uint32_t height)
+        :m_handle{0u, [](auto tex){::glDeleteTextures(1u, &tex);}}
+    {
+        ::glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
+        switch (usage) 
+        {
+            using enum TextureUsage;
+            case COLORATTACHMENT:
+                ::glTextureStorage2D(m_handle, 1, GL_RGBA8, width, height);
+                                break;
+            case DEPTHATTACHMENT:
+                ::glTextureStorage2D(m_handle, 1, GL_DEPTH_COMPONENT24, width, height);
+                break;
+                break;
+        }
+        ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
     ::GLuint Texture::get_native_handle() const { return m_handle; }
 } // namespace game

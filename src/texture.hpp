@@ -8,10 +8,18 @@
 
 namespace game
 {
+    enum class TextureUsage
+    {
+        COLORATTACHMENT,
+        DEPTHATTACHMENT
+    };
     class Texture
     {
+      
       public:
         Texture(std::span<const std::byte> data, std::uint32_t width, std::uint32_t height);
+        Texture(TextureUsage usage, std::uint32_t width, std::uint32_t height);
+        
         ::GLuint get_native_handle() const;
 
       private:

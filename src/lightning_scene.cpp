@@ -62,8 +62,8 @@ namespace game
         const Sampler* samplers[]{m_sampler.get(), m_sampler.get()};
         const auto tex_samp = std::views::zip(textures, samplers) | std::ranges::to<std::vector>();
 
-        const auto vertex_shader = Shader(resource_loader.load_string("vert.glsl"), game::ShaderType::VERTEX);
-        const auto fragment_shader = Shader(resource_loader.load_string("frag.glsl"), game::ShaderType::FRAGMENT);
+        const auto vertex_shader = Shader(resource_loader.load_string("shaders/lightning_vert.glsl"), game::ShaderType::VERTEX);
+        const auto fragment_shader = Shader(resource_loader.load_string("shaders/lightning_frag.glsl"), game::ShaderType::FRAGMENT);
 
         m_material = std::make_unique<Material>(vertex_shader, fragment_shader);
         m_mesh = std::make_unique<Mesh>(mesh_loader.cube());

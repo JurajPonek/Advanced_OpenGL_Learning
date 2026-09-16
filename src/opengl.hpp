@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <gl/gl.h>
+
 #include "vendor/opengl/glext.h"
 
 #define FOR_OPENGL_FUNCTIONS(DO)                                                                                       \
@@ -32,6 +33,7 @@
     DO(PFNGLMAPNAMEDBUFFERPROC, glMapNamedBuffer)                                                                      \
     DO(PFNGLUNMAPNAMEDBUFFERPROC, glUnmapNamedBuffer)                                                                  \
     DO(PFNGLGETNAMEDBUFFERPARAMETERIVPROC, glGetNamedBufferParameteriv)                                                \
+    DO(PFNGLBINDBUFFERBASEPROC, glBindBufferBase)                                                                      \
     DO(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays)                                                                    \
     DO(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray)                                                                    \
     DO(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays)                                                              \
@@ -44,6 +46,9 @@
     DO(PFNGLVERTEXARRAYVERTEXBUFFERPROC, glVertexArrayVertexBuffer)                                                    \
     DO(PFNGLVERTEXARRAYELEMENTBUFFERPROC, glVertexArrayElementBuffer)                                                  \
     DO(PFNGLVERTEXARRAYBINDINGDIVISORPROC, glVertexArrayBindingDivisor)                                                \
+    DO(PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray)                                                    \
+    DO(PFNGLDISABLEVERTEXATTRIBARRAYPROC, glDisableVertexAttribArray)                                                  \
+    DO(PFNGLVERTEXATTRIBPOINTERPROC, glVertexAttribPointer)                                                            \
     DO(PFNGLCREATETEXTURESPROC, glCreateTextures)                                                                      \
     DO(PFNGLTEXTURESTORAGE2DPROC, glTextureStorage2D)                                                                  \
     DO(PFNGLTEXTURESTORAGE3DPROC, glTextureStorage3D)                                                                  \
@@ -53,14 +58,8 @@
     DO(PFNGLTEXTUREPARAMETERFPROC, glTextureParameterf)                                                                \
     DO(PFNGLGENERATETEXTUREMIPMAPPROC, glGenerateTextureMipmap)                                                        \
     DO(PFNGLBINDTEXTUREUNITPROC, glBindTextureUnit)                                                                    \
-    DO(PFNGLCREATEFRAMEBUFFERSPROC, glCreateFramebuffers)                                                              \
-    DO(PFNGLNAMEDFRAMEBUFFERTEXTUREPROC, glNamedFramebufferTexture)                                                    \
-    DO(PFNGLNAMEDFRAMEBUFFERRENDERBUFFERPROC, glNamedFramebufferRenderbuffer)                                          \
-    DO(PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC, glCheckNamedFramebufferStatus)                                            \
-    DO(PFNGLCLEARNAMEDFRAMEBUFFERFVPROC, glClearNamedFramebufferfv)                                                    \
-    DO(PFNGLCLEARNAMEDFRAMEBUFFERFIPROC, glClearNamedFramebufferfi)                                                    \
-    DO(PFNGLCREATERENDERBUFFERSPROC, glCreateRenderbuffers)                                                            \
-    DO(PFNGLNAMEDRENDERBUFFERSTORAGEPROC, glNamedRenderbufferStorage)                                                  \
+    DO(PFNGLACTIVETEXTUREPROC, glActiveTexture)                                                                        \
+    DO(PFNGLGENERATEMIPMAPPROC, glGenerateMipmap)                                                                      \
     DO(PFNGLGENSAMPLERSPROC, glGenSamplers)                                                                            \
     DO(PFNGLCREATESAMPLERSPROC, glCreateSamplers)                                                                      \
     DO(PFNGLDELETESAMPLERSPROC, glDeleteSamplers)                                                                      \
@@ -69,29 +68,43 @@
     DO(PFNGLSAMPLERPARAMETERFPROC, glSamplerParameterf)                                                                \
     DO(PFNGLSAMPLERPARAMETERIVPROC, glSamplerParameteriv)                                                              \
     DO(PFNGLSAMPLERPARAMETERFVPROC, glSamplerParameterfv)                                                              \
-    DO(PFNGLPROGRAMUNIFORM1IPROC, glProgramUniform1i)                                                                  \
-    DO(PFNGLPROGRAMUNIFORM1FPROC, glProgramUniform1f)                                                                  \
-    DO(PFNGLPROGRAMUNIFORM2FPROC, glProgramUniform2f)                                                                  \
-    DO(PFNGLPROGRAMUNIFORM3FPROC, glProgramUniform3f)                                                                  \
-    DO(PFNGLPROGRAMUNIFORM4FPROC, glProgramUniform4f)                                                                  \
-    DO(PFNGLPROGRAMUNIFORMMATRIX4FVPROC, glProgramUniformMatrix4fv)                                                    \
-    DO(PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray)                                                    \
-    DO(PFNGLDISABLEVERTEXATTRIBARRAYPROC, glDisableVertexAttribArray)                                                  \
-    DO(PFNGLVERTEXATTRIBPOINTERPROC, glVertexAttribPointer)                                                            \
+    DO(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer)                                                                    \
+    DO(PFNGLCREATEFRAMEBUFFERSPROC, glCreateFramebuffers)                                                              \
+    DO(PFNGLDELETEFRAMEBUFFERSPROC, glDeleteFramebuffers)                                                              \
+    DO(PFNGLNAMEDFRAMEBUFFERTEXTUREPROC, glNamedFramebufferTexture)                                                    \
+    DO(PFNGLNAMEDFRAMEBUFFERTEXTURELAYERPROC, glNamedFramebufferTextureLayer)                                          \
+    DO(PFNGLNAMEDFRAMEBUFFERRENDERBUFFERPROC, glNamedFramebufferRenderbuffer)                                          \
+    DO(PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC, glCheckNamedFramebufferStatus)                                            \
+    DO(PFNGLNAMEDFRAMEBUFFERDRAWBUFFERPROC, glNamedFramebufferDrawBuffer)                                              \
+    DO(PFNGLNAMEDFRAMEBUFFERDRAWBUFFERSPROC, glNamedFramebufferDrawBuffers)                                            \
+    DO(PFNGLNAMEDFRAMEBUFFERREADBUFFERPROC, glNamedFramebufferReadBuffer)                                              \
+    DO(PFNGLDRAWBUFFERSPROC, glDrawBuffers)                                                                            \
+    DO(PFNGLBLITFRAMEBUFFERPROC, glBlitFramebuffer)                                                                    \
+    DO(PFNGLBLITNAMEDFRAMEBUFFERPROC, glBlitNamedFramebuffer)                                                          \
+    DO(PFNGLCLEARNAMEDFRAMEBUFFERFVPROC, glClearNamedFramebufferfv)                                                    \
+    DO(PFNGLCLEARNAMEDFRAMEBUFFERFIPROC, glClearNamedFramebufferfi)                                                    \
+    DO(PFNGLCLEARNAMEDFRAMEBUFFERIVPROC, glClearNamedFramebufferiv)                                                    \
+    DO(PFNGLCLEARNAMEDFRAMEBUFFERUIVPROC, glClearNamedFramebufferuiv)                                                  \
+    DO(PFNGLCREATERENDERBUFFERSPROC, glCreateRenderbuffers)                                                            \
+    DO(PFNGLDELETERENDERBUFFERSPROC, glDeleteRenderbuffers)                                                            \
+    DO(PFNGLNAMEDRENDERBUFFERSTORAGEPROC, glNamedRenderbufferStorage)                                                  \
+    DO(PFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLEPROC, glNamedRenderbufferStorageMultisample)                            \
     DO(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation)                                                              \
+    DO(PFNGLGETACTIVEUNIFORMPROC, glGetActiveUniform)                                                                  \
     DO(PFNGLUNIFORM1FPROC, glUniform1f)                                                                                \
     DO(PFNGLUNIFORM2FPROC, glUniform2f)                                                                                \
     DO(PFNGLUNIFORM3FPROC, glUniform3f)                                                                                \
     DO(PFNGLUNIFORM4FPROC, glUniform4f)                                                                                \
     DO(PFNGLUNIFORM1IPROC, glUniform1i)                                                                                \
     DO(PFNGLUNIFORMMATRIX4FVPROC, glUniformMatrix4fv)                                                                  \
-    DO(PFNGLACTIVETEXTUREPROC, glActiveTexture)                                                                        \
-    DO(PFNGLGENERATEMIPMAPPROC, glGenerateMipmap)                                                                      \
+    DO(PFNGLPROGRAMUNIFORM1IPROC, glProgramUniform1i)                                                                  \
+    DO(PFNGLPROGRAMUNIFORM1FPROC, glProgramUniform1f)                                                                  \
+    DO(PFNGLPROGRAMUNIFORM2FPROC, glProgramUniform2f)                                                                  \
+    DO(PFNGLPROGRAMUNIFORM3FPROC, glProgramUniform3f)                                                                  \
+    DO(PFNGLPROGRAMUNIFORM4FPROC, glProgramUniform4f)                                                                  \
+    DO(PFNGLPROGRAMUNIFORMMATRIX4FVPROC, glProgramUniformMatrix4fv)                                                    \
     DO(PFNGLDEBUGMESSAGECALLBACKPROC, glDebugMessageCallback)                                                          \
-    DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)                                                            \
-    DO(PFNGLBINDBUFFERBASEPROC, glBindBufferBase)                                                                      \
-    DO(PFNGLGETACTIVEUNIFORMPROC, glGetActiveUniform)                                                                  \
-    DO(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer)
+    DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;
 FOR_OPENGL_FUNCTIONS(DO_DEFINE)

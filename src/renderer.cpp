@@ -2,6 +2,7 @@
 #include "buffer_writer.hpp"
 #include "color.hpp"
 #include "material.hpp"
+#include "mesh.hpp"
 #include "opengl.hpp"
 #include "matrix4.hpp"
 #include "sampler.hpp"
@@ -20,9 +21,9 @@
 namespace game
 {
     Renderer::Renderer() 
-    : m_camera_buffer {sizeof(Matrix4) * 2 + sizeof(Vector3)}
+    : m_camera_buffer {sizeof(Matrix4) * 2 + sizeof(Vector3)}, m_post_process_vao{0u, [](auto vao){::glDeleteVertexArrays(1, &vao);}}
     {
-
+        ::glGenVertexArrays(1, &m_post_process_vao);
     }
     void Renderer::set_camera(const Camera* camera)
     {
@@ -43,4 +44,13 @@ namespace game
                          reinterpret_cast<void*>(mesh->get_index_offset()));
         mesh->unbind();
     }
+    void Renderer::draw_post_process_texture(const Material* material, const Sampler* sampler, const FrameBuffer& fbo)
+    {
+        material->use();
+        material->bind_texture(0, &fbo.get_color_attachment(), sampler);
+        ::glBindVertexArray(m_post_process_vao);
+        ::glDrawArrays(GL_TRIANGLES, 0, 3);
+        ::glBindVertexArray(0);
+    }
+    
 }

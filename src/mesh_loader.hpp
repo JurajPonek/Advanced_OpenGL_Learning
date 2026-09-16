@@ -19,6 +19,8 @@ namespace game
         public:
             MeshLoader(ResourceLoader& resource_loader);
             MeshData cube();
+            MeshData plane();
+            MeshData sphere();
             MeshData load(std::string_view mesh_file, std::string_view mesh_name);
             MeshData load(std::string_view mesh_file);
           private:

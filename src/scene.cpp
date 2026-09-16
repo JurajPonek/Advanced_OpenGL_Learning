@@ -5,6 +5,7 @@
 #include "log.hpp"
 #include "opengl.hpp"
 #include "window.hpp"
+#include <functional>
 #include <imgui.h>
 #include <memory>
 #include <string_view>
@@ -78,5 +79,11 @@ namespace game
         }
         ::ImGui::Render();
         ::ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    }
+
+    void SceneManager::set_startup_scene(const std::function<std::unique_ptr<Scene>()>& scene)
+    {
+        m_current = scene();
+        m_current->on_attach();
     }
 } // namespace game
