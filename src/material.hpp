@@ -20,6 +20,7 @@ namespace game
     {
         public:
             Material(const Shader& vertex_shader, const Shader& fragment_shader);
+            Material(const Shader& vertex_shader,const Shader& geometry_shader, const Shader& fragment_shader);
             GLuint get_native_handle() const;
             void use() const;
             void set_uniform(std::string_view name, const Matrix4& data) const;

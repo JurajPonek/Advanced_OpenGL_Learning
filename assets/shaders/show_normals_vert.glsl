@@ -5,17 +5,23 @@ layout(location = 1) in vec3 i_normal;
 layout(location = 2) in vec2 i_texture_coords;
 
 uniform mat4 model;
-out vec3 o_texture_coords;
 out vec3 o_normal;
-out vec4 frag_pos;
-layout(std140, binding = 0) uniform camera
+
+layout(std140, binding=0) uniform camera
 {
     mat4 view;
     mat4 projection;
     vec3 camera_position;
 };
+
+
 void main()
 {
-    gl_Position = (projection * mat4(mat3(view))  * vec4(i_position, 1.0)).xyww;
-    o_texture_coords = i_position;
+    gl_Position = view * model * vec4(i_position, 1.0f);
+    mat3 normal_matrix = mat3(transpose(inverse(view * model)));
+    o_normal = normalize(vec3(vec4(normal_matrix * i_normal, 0.0)));
 }
+
+
+
+

@@ -3,6 +3,7 @@
 #include "auto_release.hpp"
 #include "buffer.hpp"
 #include "camera.hpp"
+#include "cubemap.hpp"
 #include "framebuffer.hpp"
 #include "material.hpp"
 #include "matrix4.hpp"
@@ -12,8 +13,8 @@
 #include "sampler.hpp"
 #include "src/matrix4.hpp"
 #include <gl/gl.h>
+#include <span>
 #include <tuple>
-#include <vector>
 
 namespace game
 {

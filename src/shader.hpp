@@ -11,7 +11,8 @@ namespace game
     enum class ShaderType
     {
         VERTEX,
-        FRAGMENT
+        FRAGMENT,
+        GEOMETRY
     };
 
     class Shader
@@ -46,7 +47,9 @@ template<>
                     return std::format_to(ctx.out(), "{}\n", "VERTEX");
                 case FRAGMENT:
                     return std::format_to(ctx.out(), "{}\n", "FRAGMENT");
-            }
+                case GEOMETRY:
+                    return std::format_to(ctx.out(), "{}\n", "GEOMETRY");
+                }
             throw game::Exception("Unknown shader type", std::to_underlying(shader_type));
         }  
     };

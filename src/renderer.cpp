@@ -8,6 +8,7 @@
 #include "matrix4.hpp"
 #include "resource_loader.hpp"
 #include "sampler.hpp"
+#include "shader.hpp"
 #include "texture.hpp"
 #include "vector3.hpp"
 #include <gl/gl.h>
@@ -66,14 +67,14 @@ namespace game
     }
     void Renderer::draw_skybox(CubeMap* cubemap, Sampler* sampler) const
     {
-        glDisable(GL_CULL_FACE);
-        ::glDepthMask(GL_FALSE);
+        ::glDisable(GL_CULL_FACE);
+        ::glDepthFunc(GL_LEQUAL);  
         m_skybox_material.use();
         m_skybox_material.bind_cubemap(cubemap, sampler);
         m_skybox.bind();
         ::glDrawElements(GL_TRIANGLES, m_skybox.get_index_count(), GL_UNSIGNED_INT, reinterpret_cast<void*>(m_skybox.get_index_offset()));
         m_skybox.unbind();
-        ::glDepthMask(GL_TRUE);
-        glEnable(GL_CULL_FACE);
+        ::glDepthFunc(GL_LESS);
+        ::glEnable(GL_CULL_FACE);
     }
 }

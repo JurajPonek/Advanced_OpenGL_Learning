@@ -19,6 +19,8 @@ namespace
             return GL_VERTEX_SHADER;
         case FRAGMENT:
             return GL_FRAGMENT_SHADER;
+        case GEOMETRY:
+            return GL_GEOMETRY_SHADER;
         }
         throw std::runtime_error("Unknown shader type");
     }

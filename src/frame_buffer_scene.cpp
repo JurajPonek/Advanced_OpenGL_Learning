@@ -17,6 +17,14 @@
 #include <string>
 #include <vector>
 
+namespace
+{
+    bool g_show_normals = true;
+    bool g_show_rear_mirror = true;
+
+} // namespace
+
+
 namespace game
 {
     FrameBufferScene::FrameBufferScene(ResourceLoader& resource_loader, Window* window, Camera* camera,
@@ -28,7 +36,6 @@ namespace game
                                                    "bottom.jpg", "front.jpg", "back.jpg"};
         m_texture = std::make_unique<Texture>(resource_loader.load_binary("container2.png"), 500, 500);
         m_sampler = std::make_unique<Sampler>();
-        m_skybox_sampler = std::make_unique<Sampler>();
         m_cube_map = std::make_unique<CubeMap>(cube_map_faces, resource_loader);
         const Texture* textures[]{m_texture.get()};
         const Sampler* samplers[]{m_sampler.get()};
@@ -44,9 +51,16 @@ namespace game
         const auto post_process_frag =
             Shader(resource_loader.load_string("shaders/post_process_frag.glsl"), game::ShaderType::FRAGMENT);
 
+        const auto show_normals_vert =
+            Shader(resource_loader.load_string("shaders/show_normals_vert.glsl"), game::ShaderType::VERTEX);
+        const auto show_normals_geo =
+            Shader(resource_loader.load_string("shaders/show_normals_geo.glsl"), game::ShaderType::GEOMETRY);
+        const auto show_normals_frag =
+            Shader(resource_loader.load_string("shaders/show_normals_frag.glsl"), game::ShaderType::FRAGMENT);
 
         m_material = std::make_unique<Material>(vertex_shader, fragment_shader);
         m_post_process_material = std::make_unique<Material>(post_process_vert, post_process_frag);
+        m_geometry_material = std::make_unique<Material>(show_normals_vert, show_normals_geo, show_normals_frag);
         m_cube = std::make_unique<Mesh>(m_mesh_loader->cube());
         m_plane = std::make_unique<Mesh>(m_mesh_loader->plane());
         m_sphere = std::make_unique<Mesh>(m_mesh_loader->sphere());
@@ -58,45 +72,74 @@ namespace game
     }
     void FrameBufferScene::on_render()
     {
-        // m_fbo.bind();
-        // ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // ::glEnable(GL_DEPTH_TEST);
-        // m_camera->rotate(std::numbers::pi_v<float>, {0.0f,1.0f,0.0f});
-        // m_renderer->set_camera(m_camera);
-        // for (const auto& entity : m_entities)
-        // {
-        //     m_renderer->draw_mesh(entity.get_mesh(), entity.get_material(), entity.get_model_matrix(),
-        //                           entity.get_textures());
-        // }
+        if (g_show_rear_mirror)
+        {
+            m_fbo.bind();
+            ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            ::glEnable(GL_DEPTH_TEST);
+            m_camera->rotate(std::numbers::pi_v<float>, {0.0f, 1.0f, 0.0f});
+            m_renderer->set_camera(m_camera);
+            for (const auto& entity : m_entities)
+            {
+                m_renderer->draw_mesh(entity.get_mesh(), entity.get_material(), entity.get_model_matrix(),
+                                      entity.get_textures());
+            }
+            m_renderer->draw_skybox(m_cube_map.get(), m_sampler.get());
+            m_fbo.unbind();
+            m_camera->rotate(-std::numbers::pi_v<float>, {0.0f, 1.0f, 0.0f});
+        }
+
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        ::glEnable(GL_DEPTH_TEST); // m_fbo.unbind();
+        ::glEnable(GL_DEPTH_TEST);
         m_renderer->set_camera(m_camera);
-        m_renderer->draw_skybox(m_cube_map.get(), m_skybox_sampler.get());
-        // m_camera->rotate(-std::numbers::pi_v<float>, {0.0f, 1.0f, 0.0f});
         for (const auto& entity : m_entities)
         {
             m_renderer->draw_mesh(entity.get_mesh(), entity.get_material(), entity.get_model_matrix(),
                                   entity.get_textures());
         }
-        // ::glDisable(GL_DEPTH_TEST);
-        // ::glViewport(100, 100, m_fbo.get_width(), m_fbo.get_height());
-        // m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_fbo);
-        // ::glViewport(0, 0, 1920, 1080);
+        m_renderer->draw_skybox(m_cube_map.get(), m_sampler.get());
+        if (g_show_rear_mirror)
+        {
+            ::glDisable(GL_DEPTH_TEST);
+            ::glViewport(100, 100, m_fbo.get_width(), m_fbo.get_height());
+            m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_fbo);
+            ::glViewport(0, 0, 1920, 1080);
+        }
+
+        if (g_show_normals)
+        {
+            ::glEnable(GL_DEPTH_TEST);
+            for (const auto& entity : m_entities)
+            {
+                const auto& mesh = entity.get_mesh();
+                m_geometry_material->use();
+                m_geometry_material->set_uniform("model", entity.get_model_matrix());
+                mesh->bind();
+                ::glDrawElements(GL_TRIANGLES, mesh->get_index_count(), GL_UNSIGNED_INT,
+                                 reinterpret_cast<void*>(mesh->get_index_offset()));
+                mesh->unbind();
+            }
+        }
     }
     void FrameBufferScene::on_imgui_render()
-    {
-        // ImGui::Begin("Framebuffer Preview");
+    { 
+        ImGui::Checkbox("Show normals", &g_show_normals);
+        ImGui::Checkbox("Show rear view fbo", &g_show_rear_mirror);
+        
+        ImGui::Begin("Framebuffer Preview");
 
-        // ::GLuint texture_id = m_fbo.get_color_attachment().get_native_handle();
+        ::GLuint texture_id = m_fbo.get_color_attachment().get_native_handle();
 
-        // ImVec2 image_size = ImVec2(320.0f, 180.0f);
-        // ImTextureID imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
+        ImVec2 image_size = ImVec2(320.0f, 180.0f);
+        ImTextureID imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
 
-        // ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
 
-        // ImGui::Text("FBO size: %dx%d", m_fbo.get_width(), m_fbo.get_height());
+        ImGui::Text("FBO size: %dx%d", m_fbo.get_width(), m_fbo.get_height());
 
-        // ImGui::End();
+       
+
+        ImGui::End();
     }
     void FrameBufferScene::on_attach()
     {

@@ -34,11 +34,11 @@ namespace game
           std::unique_ptr<Texture> m_texture;
           std::unique_ptr<Texture> m_texture_spec;
           std::unique_ptr<Sampler> m_sampler;
-          std::unique_ptr<Sampler> m_skybox_sampler;
           std::unique_ptr<Mesh> m_cube;
           std::unique_ptr<Mesh> m_plane;
           std::unique_ptr<Mesh> m_sphere;
           std::unique_ptr<Material> m_material;
+          std::unique_ptr<Material> m_geometry_material;
           std::unique_ptr<Material> m_post_process_material;
           std::unique_ptr<CubeMap> m_cube_map;
           Renderer* m_renderer;

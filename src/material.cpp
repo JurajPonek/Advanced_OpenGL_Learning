@@ -60,6 +60,49 @@ namespace game
 
 
     }
+    Material::Material(const Shader& vertex_shader, const Shader& geometry_shader, const Shader& fragment_shader)
+    {
+        ensure(vertex_shader.get_type() == ShaderType::VERTEX, "Shader is not vertex shader");
+        ensure(geometry_shader.get_type() == ShaderType::GEOMETRY, "Shader is not geometry shader");
+        ensure(fragment_shader.get_type() == ShaderType::FRAGMENT, "Shader is not fragment shader");
+
+        m_handle = game::AutoRelease<::GLuint>{::glCreateProgram(), ::glDeleteProgram};
+        ensure(m_handle, "failed to create program");
+        ::glAttachShader(m_handle, vertex_shader.get_native_handle());
+        ::glAttachShader(m_handle, geometry_shader.get_native_handle());
+        ::glAttachShader(m_handle, fragment_shader.get_native_handle());
+        ::glLinkProgram(m_handle);
+        GLint res{};
+        ::glGetProgramiv(m_handle, GL_LINK_STATUS, &res);
+        if (res != GL_TRUE)
+        {
+            char log[512];
+            ::glGetProgramInfoLog(m_handle, sizeof(log), nullptr, log);
+
+            ensure(res, "Failed to link program\n{}", log);
+        }
+        ::GLint uniform_count{};
+        ::glGetProgramiv(m_handle, GL_ACTIVE_UNIFORMS, &uniform_count);
+        if (uniform_count != 0)
+        {
+            ::GLint max_name_lenght{};
+            ::glGetProgramiv(m_handle, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &max_name_lenght);
+            log::debug("Max name lenght {}", max_name_lenght);
+            ::GLsizei lenght{};
+            ::GLsizei count{};
+            ::GLenum type{};
+            for (auto i{0}; i < uniform_count; i++)
+            {
+                std::string name(max_name_lenght, '\0');
+                ::glGetActiveUniform(m_handle, i, max_name_lenght, &lenght, &count, &type, name.data());
+                name.resize(lenght);
+                const auto location = ::glGetUniformLocation(m_handle, name.c_str());
+                m_uniforms[name] = location;
+                log::debug("Found unifrom {}", name);
+            }
+        }
+        log::info("new material ({} uniforms)", uniform_count);
+    }
     GLuint Material::get_native_handle() const
     {
         return m_handle;
