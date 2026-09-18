@@ -86,11 +86,12 @@ namespace game
 
             inline static constexpr Matrix4 rotate(const Matrix4& mat, float angle, Vector3 vector)
             {
+
                 auto c = std::cos(angle);
                 auto s = std::sin(angle);
                 auto t = 1 - c;
                 vector = Vector3::normalize(vector);
-                Matrix4 tmp{};
+                Matrix4 tmp{mat.m_data};
                 tmp.m_data[0]= t * vector.x * vector.x + c;
                 tmp.m_data[4] = t * vector.x * vector.y + vector.z * s;
                 tmp.m_data[8] = t * vector.x * vector.z - vector.y * s;
@@ -101,7 +102,24 @@ namespace game
                 tmp.m_data[6] = t * vector.y * vector.z - vector.x * s;
                 tmp.m_data[10] = t * vector.z * vector.z + c;
                 return mat * tmp;
+            }
 
+            inline static constexpr Matrix4 translate(const Matrix4& mat, Vector3 translation)
+            {
+                Matrix4 tmp{mat.m_data};
+                tmp.m_data[12] = translation.x;
+                tmp.m_data[13] = translation.y;
+                tmp.m_data[14] = translation.z;
+                return tmp;
+
+            }
+            inline static constexpr Matrix4 scale(const Matrix4& mat, Vector3 scale)
+            {
+                Matrix4 tmp{mat.m_data};
+                tmp.m_data[0] = scale.x;
+                tmp.m_data[5] = scale.y;
+                tmp.m_data[10] = scale.z;
+                return tmp;
             }
 
           private:

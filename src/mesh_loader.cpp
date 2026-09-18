@@ -100,8 +100,8 @@ namespace game
         const auto* scene = importer.ReadFileFromMemory(model_file_data.data(), model_file_data.size(),
                                                         ::aiProcess_Triangulate | ::aiProcess_CalcTangentSpace |
                                                             ::aiProcess_GenSmoothNormals |
-                                                            ::aiProcess_PreTransformVertices | ::aiProcess_FlipUVs,
-                                                        "fbx");
+                                                            ::aiProcess_PreTransformVertices | ::aiProcess_FlipUVs
+                                                        );
         //::aiProcess_FlipUVs
 
         ensure((scene != nullptr) && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mNumMeshes > 0,

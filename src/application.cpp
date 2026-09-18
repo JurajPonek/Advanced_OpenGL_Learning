@@ -15,6 +15,7 @@
 #include "resource_loader.hpp"
 #include "scene.hpp"
 #include "src/frame_buffer_scene.hpp"
+#include "src/instancing_scene.hpp"
 #include "src/vector3.hpp"
 #include "stop_event.hpp"
 #include "window.hpp"
@@ -60,18 +61,19 @@ namespace game
                                        static_cast<float>(m_window.get_width()),
                                        static_cast<float>(m_window.get_height()),
                                        0.1,
-                                       100.0f};
+                                       1000.0f};
             SceneManager manager{};
             Renderer renderer{mesh_loader, resource_loader,};
 
             manager.add_scene<ClearColorScene>("ClearColorScene");
             manager.add_scene<LightningScene>("LightningScene", resource_loader, &m_window, &camera, &renderer);
             manager.add_scene<FrameBufferScene>("FrameBufferScene", resource_loader, &m_window, &camera, &renderer, &mesh_loader);
+            manager.add_scene<InstancingScene>("InstancingScene", resource_loader, &m_window, &camera, &renderer, &mesh_loader);
             manager.set_startup_scene([&]()
-                { return std::make_unique<FrameBufferScene>(resource_loader, &m_window, &camera, &renderer, &mesh_loader); });
+                { return std::make_unique<InstancingScene>(resource_loader, &m_window, &camera, &renderer, &mesh_loader); });
 
 
-                auto running = true;
+            auto running = true;
             auto key_states = std::unordered_map<Key, bool>{};
             auto last_time = std::chrono::high_resolution_clock::now();
             float speed = 20.0f;

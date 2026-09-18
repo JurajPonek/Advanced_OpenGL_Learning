@@ -104,7 +104,9 @@
     DO(PFNGLPROGRAMUNIFORM4FPROC, glProgramUniform4f)                                                                  \
     DO(PFNGLPROGRAMUNIFORMMATRIX4FVPROC, glProgramUniformMatrix4fv)                                                    \
     DO(PFNGLDEBUGMESSAGECALLBACKPROC, glDebugMessageCallback)                                                          \
-    DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)
+    DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)                                                            \
+    DO(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced)
+
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;
 FOR_OPENGL_FUNCTIONS(DO_DEFINE)

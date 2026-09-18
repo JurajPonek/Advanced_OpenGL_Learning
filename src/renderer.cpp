@@ -77,4 +77,15 @@ namespace game
         ::glDepthFunc(GL_LESS);
         ::glEnable(GL_CULL_FACE);
     }
+    void Renderer::draw_instanced(const Mesh* mesh, const Material* material, 
+                        std::span<const std::tuple<const Texture*, const Sampler*>> textures, size_t count) const
+
+    {
+        material->use();
+        material->bind_textures(textures);
+        mesh->bind();
+        ::glDrawElementsInstanced(GL_TRIANGLES, mesh->get_index_count(), GL_UNSIGNED_INT,
+                         reinterpret_cast<void*>(mesh->get_index_offset()), count);
+        mesh->unbind();
+    }
 }
