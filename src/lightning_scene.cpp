@@ -49,7 +49,7 @@ namespace game
         : m_entities{}, m_ambient{0.3f, 0.3f, 0.3f}, m_directional{{0.0f, -1.0f, .0f}, {.0f, .0f, .0f}},
           m_points{{{0.0f, 5.0f, 1.0f}, {0.5f, 0.5f, 0.5f}, 1.0f, 0.07f, 0.0017f},
                    {{-5.0f, 5.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, 1.0f, 0.07f, 0.0017f}},
-          m_camera{camera}, m_light_buffer{10240u}, m_renderer{renderer}
+          m_camera{camera}, m_light_buffer{1024u}, m_renderer{renderer}
 
 
     {

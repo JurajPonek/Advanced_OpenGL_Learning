@@ -5,6 +5,7 @@
 #include "vendor/opengl/glext.h"
 #include <cstddef>
 #include <gl/gl.h>
+#include <memory>
 
 namespace game
 {
@@ -18,15 +19,15 @@ namespace game
         {
             if (usage == TextureUsage::DEPTHATTACHMENT)
             {
-                m_depth_attachment.emplace(usage, m_specification.width, m_specification.height, m_specification.samples);
+                m_depth_attachment = std::make_unique<Texture>(usage, m_specification.width, m_specification.height, m_specification.samples);
                 ::glNamedFramebufferTexture(m_handle, GL_DEPTH_ATTACHMENT,m_depth_attachment->get_native_handle(), 0);
             }
             else 
             {
                 size_t index = m_color_attachments.size();
-                m_color_attachments.emplace_back(usage, m_specification.width, m_specification.height, m_specification.samples);
+                m_color_attachments.push_back(std::make_unique<Texture>(usage, m_specification.width, m_specification.height, m_specification.samples));
                 ::glNamedFramebufferTexture(m_handle, GL_COLOR_ATTACHMENT0 + index,
-                                                m_color_attachments.back().get_native_handle(), 0);
+                                                m_color_attachments.back()->get_native_handle(), 0);
             }
         }
         if (m_color_attachments.empty())
@@ -58,7 +59,7 @@ namespace game
     }
     const Texture& FrameBuffer::get_color_attachment(size_t index) const
     {
-        return m_color_attachments[index];
+        return *m_color_attachments[index].get();
     }
     const Texture& FrameBuffer::get_depth_attachment() const
     {

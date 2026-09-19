@@ -23,13 +23,14 @@
 #include <chrono>
 #include <concepts>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <numbers>
 #include <print>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
-#include <iostream>
+
 
 namespace game
 {
@@ -49,31 +50,41 @@ namespace game
         ::ImGui::DestroyContext();
     }
 
-    void Application::run() 
+    void Application::run()
     {
         try
         {
             ResourceLoader resource_loader{"../assets/"};
             MeshLoader mesh_loader{resource_loader};
-            auto camera = Camera{{0.0f, 0.0f, 6.0f},
-                                       {0.0f, 1.0f, 0.0f},
-                                       {0.0f, 1.0f, 0.0f},
-                                       std::numbers::pi_v<float> / 4,
-                                       static_cast<float>(m_window.get_width()),
-                                       static_cast<float>(m_window.get_height()),
-                                       0.1,
-                                       1000.0f};
+            auto camera = Camera{{.14f, 9.9f, 19.f},
+                                 {0.04f, -0.5f, -.9f},
+                                 {0.0f, 1.0f, 0.0f},
+                                 std::numbers::pi_v<float> / 4,
+                                 static_cast<float>(m_window.get_width()),
+                                 static_cast<float>(m_window.get_height()),
+                                 0.1,
+                                 1000.0f};
+
             SceneManager manager{};
-            Renderer renderer{mesh_loader, resource_loader,};
+            Renderer renderer{
+                mesh_loader,
+                resource_loader,
+            };
 
             manager.add_scene<ClearColorScene>("ClearColorScene");
             manager.add_scene<LightningScene>("LightningScene", resource_loader, &m_window, &camera, &renderer);
-            manager.add_scene<FrameBufferScene>("FrameBufferScene", resource_loader, &m_window, &camera, &renderer, &mesh_loader);
-            manager.add_scene<InstancingScene>("InstancingScene", resource_loader, &m_window, &camera, &renderer, &mesh_loader);
+            manager.add_scene<FrameBufferScene>("FrameBufferScene", resource_loader, &m_window, &camera, &renderer,
+                                                &mesh_loader);
+            manager.add_scene<InstancingScene>("InstancingScene", resource_loader, &m_window, &camera, &renderer,
+                                               &mesh_loader);
             manager.add_scene<AdvancedLightningScene>("AdvancedLightningScene", resource_loader, &m_window, &camera,
                                                       &renderer, &mesh_loader);
-            manager.set_startup_scene([&]()
-                { return std::make_unique<AdvancedLightningScene>(resource_loader, &m_window, &camera, &renderer, &mesh_loader); });
+            manager.set_startup_scene(
+                [&]()
+                {
+                    return std::make_unique<AdvancedLightningScene>(resource_loader, &m_window, &camera, &renderer,
+                                                                    &mesh_loader);
+                });
 
 
             auto running = true;

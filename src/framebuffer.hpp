@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <gl/gl.h>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -34,8 +35,8 @@ namespace game
       private:
         AutoRelease<::GLuint> m_handle;
         FramebufferSpecification m_specification;
-        std::vector<Texture> m_color_attachments;
-        std::optional<Texture> m_depth_attachment;
+        std::vector<std::unique_ptr<Texture>> m_color_attachments;
+        std::unique_ptr<Texture> m_depth_attachment;
     };
 
 } // namespace game
