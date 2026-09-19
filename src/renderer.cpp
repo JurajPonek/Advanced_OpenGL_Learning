@@ -2,6 +2,7 @@
 #include "buffer_writer.hpp"
 #include "color.hpp"
 #include "cubemap.hpp"
+#include "framebuffer.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
 #include "opengl.hpp"
@@ -48,10 +49,10 @@ namespace game
                          reinterpret_cast<void*>(mesh->get_index_offset()));
         mesh->unbind();
     }
-    void Renderer::draw_post_process_texture(const Material* material, const Sampler* sampler, const FrameBuffer& fbo)
+    void Renderer::draw_post_process_texture(const Material* material, const Sampler* sampler, FrameBuffer* fbo)
     {
         material->use();
-        material->bind_texture(0, &fbo.get_color_attachment(), sampler);
+        material->bind_texture(0, &fbo->get_color_attachment(), sampler);
         ::glBindVertexArray(m_post_process_vao);
         ::glDrawArrays(GL_TRIANGLES, 0, 3);
         ::glBindVertexArray(0);

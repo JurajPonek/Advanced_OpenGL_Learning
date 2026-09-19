@@ -105,7 +105,9 @@
     DO(PFNGLPROGRAMUNIFORMMATRIX4FVPROC, glProgramUniformMatrix4fv)                                                    \
     DO(PFNGLDEBUGMESSAGECALLBACKPROC, glDebugMessageCallback)                                                          \
     DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)                                                            \
-    DO(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced)
+    DO(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced)                                                        \
+    DO(PFNGLTEXIMAGE2DMULTISAMPLEPROC, glTexImage2DMultisample)                                                        \
+    DO(PFNGLTEXTURESTORAGE2DMULTISAMPLEPROC, glTextureStorage2DMultisample)
 
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;

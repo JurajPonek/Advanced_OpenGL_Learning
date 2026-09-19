@@ -1,6 +1,7 @@
 #include "frame_buffer_scene.hpp"
 #include "camera.hpp"
 #include "cubemap.hpp"
+#include "framebuffer.hpp"
 #include "imgui.h"
 #include "mesh.hpp"
 #include "mesh_loader.hpp"
@@ -29,9 +30,15 @@ namespace game
 {
     FrameBufferScene::FrameBufferScene(ResourceLoader& resource_loader, Window* window, Camera* camera,
                                        Renderer* renderer, MeshLoader* mesh_loader)
-        : m_entities{}, m_camera{camera}, m_renderer{renderer}, m_fbo{512, 256}, m_mesh_loader{mesh_loader}
+        : m_entities{}, m_camera{camera}, m_renderer{renderer},  m_mesh_loader{mesh_loader}
 
     {
+        FramebufferSpecification spec{};
+        spec.width = 516;
+        spec.height = 256;
+        spec.samples = 1;
+        spec.attachments = {TextureUsage::COLORATTACHMENT, TextureUsage::DEPTHATTACHMENT};
+        m_fbo = std::make_unique<FrameBuffer>(spec);
         std::vector<std::string> cube_map_faces = {"right.jpg",  "left.jpg",  "top.jpg",
                                                    "bottom.jpg", "front.jpg", "back.jpg"};
         m_texture = std::make_unique<Texture>(resource_loader.load_binary("container2.png"), 500, 500);
@@ -74,7 +81,7 @@ namespace game
     {
         if (g_show_rear_mirror)
         {
-            m_fbo.bind();
+            m_fbo->bind();
             ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             ::glEnable(GL_DEPTH_TEST);
             m_camera->rotate(std::numbers::pi_v<float>, {0.0f, 1.0f, 0.0f});
@@ -85,7 +92,8 @@ namespace game
                                       entity.get_textures());
             }
             m_renderer->draw_skybox(m_cube_map.get(), m_sampler.get());
-            m_fbo.unbind();
+            m_fbo->unbind();
+            ::glViewport(0, 0, 1920, 1080);
             m_camera->rotate(-std::numbers::pi_v<float>, {0.0f, 1.0f, 0.0f});
         }
 
@@ -101,8 +109,8 @@ namespace game
         if (g_show_rear_mirror)
         {
             ::glDisable(GL_DEPTH_TEST);
-            ::glViewport(100, 100, m_fbo.get_width(), m_fbo.get_height());
-            m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_fbo);
+            ::glViewport(100, 100, m_fbo->get_width(), m_fbo->get_height());
+            m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_fbo.get());
             ::glViewport(0, 0, 1920, 1080);
         }
 
@@ -128,14 +136,14 @@ namespace game
         
         ImGui::Begin("Framebuffer Preview");
 
-        ::GLuint texture_id = m_fbo.get_color_attachment().get_native_handle();
+        ::GLuint texture_id = m_fbo->get_color_attachment().get_native_handle();
 
         ImVec2 image_size = ImVec2(320.0f, 180.0f);
         ImTextureID imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
 
         ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
 
-        ImGui::Text("FBO size: %dx%d", m_fbo.get_width(), m_fbo.get_height());
+        ImGui::Text("FBO size: %dx%d", m_fbo->get_width(), m_fbo->get_height());
 
        
 

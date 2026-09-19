@@ -42,7 +42,7 @@ namespace game
           std::unique_ptr<Material> m_post_process_material;
           std::unique_ptr<CubeMap> m_cube_map;
           Renderer* m_renderer;
-          FrameBuffer m_fbo;
+          std::unique_ptr<FrameBuffer> m_fbo;
           MeshLoader* m_mesh_loader;
     };
 }
