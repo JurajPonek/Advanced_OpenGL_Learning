@@ -4,7 +4,9 @@ out vec4 frag_color;
 in vec2 o_texture_coords;
 in vec3 o_normal;
 in vec4 frag_pos;
+in vec4 frag_pos_light_space;
 uniform sampler2D tex0;
+uniform sampler2D tex1;
 layout(std140, binding = 0) uniform camera
 {
     mat4 view;
@@ -31,7 +33,15 @@ layout(std430, binding = 1) readonly buffer lights
 };
 
 
-
+float calculate_shadow(vec4 fragPosLightSpace)
+{
+    vec3 proj_coords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    vec3 frag_coord = proj_coords * 0.5 + 0.5;
+    float closestDepth = texture(tex1, frag_coord.xy).r;
+    float currentDepth = frag_coord.z;
+    float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+    return shadow;
+}
 
 float calculate_attenuation(float distance, float radius)
 {
@@ -85,12 +95,15 @@ vec3 calculate_point(int index)
 void main()
 {
     vec4 albedo = texture(tex0, o_texture_coords);
-    vec3 color = calculate_ambient() + calculate_direction();
+    vec3 ambient = calculate_ambient();
+    vec3 direction = calculate_direction();
+    vec3 point = vec3(0.0);
     for (int i = 0; i < num_of_points; ++i)
     {
-        color += calculate_point(i);
+        point += calculate_point(i);
     }
-    frag_color = vec4(color * albedo.rgb, albedo.a);
+    float shadow = calculate_shadow(frag_pos_light_space);
+    frag_color = vec4((ambient + (1.0 - shadow) * direction + point) * albedo.rgb, albedo.a);
 }
 
 

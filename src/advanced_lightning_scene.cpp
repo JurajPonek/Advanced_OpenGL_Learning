@@ -43,7 +43,7 @@ namespace game
                                                    Renderer* renderer, MeshLoader* mesh_loader)
         : m_entities{}, m_camera{camera}, m_renderer{renderer}, m_mesh_loader{mesh_loader},
           m_points{{{0.0f, 5.0f, 1.0f}, {0.5f, 0.5f, 0.5f}, 64, 25.0f, 30.0f}}, m_light_buffer{1024u},
-          m_directional{{0.0f, -1.0f, .0f}, {.0f, .0f, .0f}}, m_ambient{0.3f, 0.3f, 0.3f}
+          m_directional{{0.0f, -1.0f, .0f}, {1.0f, 1.0f, 1.0f}}, m_ambient{0.3f, 0.3f, 0.3f}
     {
         FramebufferSpecification spec{};
         spec.width = window->get_width();
@@ -53,6 +53,11 @@ namespace game
         m_msaa_fbo = std::make_unique<FrameBuffer>(spec);
         spec.samples = 1;
         m_post_process_fbo = std::make_unique<FrameBuffer>(spec);
+        spec.attachments = {TextureUsage::DEPTHATTACHMENT};
+        spec.width = 2048;
+        spec.height = 2048;
+        m_shadow_map = std::make_unique<FrameBuffer>(spec);
+
 
         m_default_texture = std::make_unique<Texture>(resource_loader.load_binary("container2.png"), TextureFormat::SRGBA);
         m_plane_texture = std::make_unique<Texture>(resource_loader.load_binary("wooden_floor.png"), TextureFormat::SRGBA);
@@ -69,12 +74,19 @@ namespace game
         const auto fragment_shader =
             Shader(resource_loader.load_string("shaders/advanced_lightning_frag.glsl"), game::ShaderType::FRAGMENT);
 
+        const auto shadow_map_vert =
+            Shader(resource_loader.load_string("shaders/shadow_map_vert.glsl"), game::ShaderType::VERTEX);
+        const auto shadow_map_frag =
+            Shader(resource_loader.load_string("shaders/shadow_map_frag.glsl"), game::ShaderType::FRAGMENT);
+
         const auto post_process_vert =
             Shader(resource_loader.load_string("shaders/post_process_vert.glsl"), game::ShaderType::VERTEX);
         const auto post_process_frag =
             Shader(resource_loader.load_string("shaders/post_process_frag.glsl"), game::ShaderType::FRAGMENT);
+
         m_material = std::make_unique<Material>(vertex_shader, fragment_shader);
         m_post_process_material = std::make_unique<Material>(post_process_vert, post_process_frag);
+        m_shadow_map_material = std::make_unique<Material>(shadow_map_vert, shadow_map_frag);
         m_cube = std::make_unique<Mesh>(m_mesh_loader->cube());
         m_plane = std::make_unique<Mesh>(m_mesh_loader->plane());
         m_sphere = std::make_unique<Mesh>(m_mesh_loader->sphere());
@@ -86,11 +98,29 @@ namespace game
     void AdvancedLightningScene::on_render()
     {
         FrameBuffer* render_target = g_enable_msaa ? m_msaa_fbo.get() : m_post_process_fbo.get();
+
+        ::glEnable(GL_DEPTH_TEST);
+        m_shadow_map->bind();
+        ::glClear(GL_DEPTH_BUFFER_BIT);
+        float near_plane = 1.0f, far_plane = 30.0f;
+        Matrix4 light_view = Matrix4::look_at({-2.0f, 4.0f, -1.0f}, m_directional.direction, {0.0f, 1.0f, 0.0f});
+        Matrix4 light_projection = Matrix4::orthographic(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+        Matrix4 light_space_matrix = light_projection * light_view;
+        for (const auto& entity : m_entities)
+        {
+            m_renderer->draw_to_depth_buffer(entity.get_mesh(), m_shadow_map_material.get(), entity.get_model_matrix(), light_space_matrix);
+        }
+        m_shadow_map->unbind();
+        ::glViewport(0, 0, render_target->get_width(), render_target->get_height());
+
+
+
         render_target->bind();
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ::glEnable(GL_DEPTH_TEST);
         m_renderer->set_camera(m_camera);
         setup_lights();
+        setup_shadows(light_space_matrix);
         for (const auto& entity : m_entities)
         {
             m_renderer->draw_mesh(entity.get_mesh(), entity.get_material(), entity.get_model_matrix(),
@@ -183,6 +213,20 @@ namespace game
         point.position.x = translate.data()[12];
         point.position.y = translate.data()[13];
         point.position.z = translate.data()[14];
+        ImGui::Begin("Framebuffer Preview");
+
+        ::GLuint texture_id = m_shadow_map->get_depth_attachment().get_native_handle();
+
+        ImVec2 image_size = ImVec2(320.0f, 180.0f);
+        ImTextureID imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
+
+        ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+
+        //ImGui::Text("FBO size: %dx%d", m_fbo->get_width(), m_fbo->get_height());
+
+
+        ImGui::End();
+    
     }
     void AdvancedLightningScene::on_attach()
     {
@@ -204,5 +248,11 @@ namespace game
             writer.write(point_buffer);
         }
         ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_light_buffer.get_native_handle());
+    }
+    void AdvancedLightningScene::setup_shadows(const Matrix4& lightSpaceMatrix)
+    {
+        m_material->use();
+        m_material->set_uniform("light_space_matrix", lightSpaceMatrix);
+        m_material->bind_texture(1, &m_shadow_map->get_depth_attachment(), m_sampler.get());
     }
 } // namespace game

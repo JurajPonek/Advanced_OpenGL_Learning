@@ -12,6 +12,7 @@
 #include "resource_loader.hpp"
 #include "sampler.hpp"
 #include "src/matrix4.hpp"
+#include "texture.hpp"
 #include <gl/gl.h>
 #include <span>
 #include <tuple>
@@ -25,6 +26,7 @@ namespace game
         void set_camera(const Camera* camera);
         void draw_mesh(const Mesh* mesh, const Material* material, const Matrix4& transform,
                        std::span<const std::tuple<const Texture*, const Sampler*>> textures) const;
+        void draw_to_depth_buffer(const Mesh* mesh, const Material* material, const Matrix4& transform, const Matrix4& light_space_matrix) const;
         void draw_instanced(const Mesh* mesh, const Material* material, std::span<const std::tuple<const Texture*, const Sampler*>> textures, size_t count) const;
         void draw_post_process_texture(const Material* material, const Sampler* sampler, FrameBuffer* fbo);
         void draw_skybox(CubeMap* cubemap, Sampler* sampler) const;

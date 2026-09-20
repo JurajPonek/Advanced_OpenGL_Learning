@@ -15,13 +15,10 @@ namespace game
 
     Material::Material(const Shader& vertex_shader, const Shader& fragment_shader) : m_handle({}), m_uniforms{}
     {
-        ensure(vertex_shader.get_type() == ShaderType::VERTEX,  "Shader is not vertex shader");
+        ensure(vertex_shader.get_type() == ShaderType::VERTEX, "Shader is not vertex shader");
         ensure(fragment_shader.get_type() == ShaderType::FRAGMENT, "Shader is not fragment shader");
 
-        m_handle = game::AutoRelease<::GLuint>
-        {
-            ::glCreateProgram(), ::glDeleteProgram
-        };
+        m_handle = game::AutoRelease<::GLuint>{::glCreateProgram(), ::glDeleteProgram};
         ensure(m_handle, "failed to create program");
         ::glAttachShader(m_handle, vertex_shader.get_native_handle());
         ::glAttachShader(m_handle, fragment_shader.get_native_handle());
@@ -40,7 +37,7 @@ namespace game
         if (uniform_count != 0)
         {
             ::GLint max_name_lenght{};
-            ::glGetProgramiv(m_handle, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &max_name_lenght);
+            ::glGetProgramiv(m_handle, GL_ACTIVE_UNIFORM_MAX_LENGTH, &max_name_lenght);
             log::debug("Max name lenght {}", max_name_lenght);
             ::GLsizei lenght{};
             ::GLsizei count{};
@@ -54,11 +51,8 @@ namespace game
                 m_uniforms[name] = location;
                 log::debug("Found unifrom {}", name);
             }
-
         }
         log::info("new material ({} uniforms)", uniform_count);
-
-
     }
     Material::Material(const Shader& vertex_shader, const Shader& geometry_shader, const Shader& fragment_shader)
     {
@@ -103,14 +97,8 @@ namespace game
         }
         log::info("new material ({} uniforms)", uniform_count);
     }
-    GLuint Material::get_native_handle() const
-    {
-        return m_handle;
-    }
-    void Material::use() const
-    {
-        ::glUseProgram(m_handle);
-    }
+    GLuint Material::get_native_handle() const { return m_handle; }
+    void Material::use() const { ::glUseProgram(m_handle); }
     void Material::set_uniform(std::string_view name, const Matrix4& data) const
     {
         const auto uniform = m_uniforms.find(name);
@@ -139,10 +127,10 @@ namespace game
     }
     void Material::bind_textures(std::span<const std::tuple<const Texture*, const Sampler*>> tex_samps) const
     {
-        for (const auto& [index, tex_samp] :tex_samps | std::views::enumerate)
+        for (const auto& [index, tex_samp] : tex_samps | std::views::enumerate)
         {
             const auto& [texture, sampler] = tex_samp;
-            bind_texture(static_cast<std::uint32_t>(index), texture , sampler);
+            bind_texture(static_cast<std::uint32_t>(index), texture, sampler);
         }
     }
     void Material::bind_cubemap(const CubeMap* texture, const Sampler* sampler) const
@@ -152,4 +140,4 @@ namespace game
         const auto uniform_name = std::format("tex{}", 0);
         set_uniform(uniform_name, 0);
     }
-}
+} // namespace game

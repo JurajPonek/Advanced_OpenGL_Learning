@@ -10,9 +10,11 @@ layout(std140, binding = 0) uniform camera
     vec3 camera_position;
 };
 uniform mat4 model;
+uniform mat4 light_space_matrix;
 out vec3 o_normal;
 out vec2 o_texture_coords;
 out vec4 frag_pos;
+out vec4 frag_pos_light_space;
 
 void main()
 {
@@ -20,4 +22,5 @@ void main()
     o_texture_coords = i_texture_coords;
     o_normal = transpose(inverse(mat3(model))) * i_normal;
     frag_pos = model * vec4(i_position, 1.0f);
+    frag_pos_light_space = light_space_matrix * frag_pos;
 };

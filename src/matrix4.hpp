@@ -63,7 +63,21 @@ namespace game
 
                 return matrix * Matrix4(-position);
             }
-            friend constexpr Matrix4& operator*=(Matrix4& mat1, const Matrix4& mat2);
+
+            static constexpr Matrix4 orthographic(float left, float right, float bottom, float top, float znear, float zfar)
+            {
+                Matrix4 res{};
+                res.m_data[0] = 2.0f / (right - left);
+                res.m_data[5] = 2.0f / (top - bottom);
+                res.m_data[10] = -2.0f / (zfar - znear);
+                res.m_data[12] = -((right + left) / (right - left));
+                res.m_data[13] = -((top + bottom) / (top - bottom));
+                res.m_data[14] = -((zfar + znear) / (zfar - znear));
+                return res;
+            }
+
+            friend constexpr Matrix4&
+            operator*=(Matrix4& mat1, const Matrix4& mat2);
             friend constexpr Matrix4 operator*(const Matrix4& mat1, const Matrix4& mat2);
             friend constexpr Vector3 operator*(const Matrix4& mat, const Vector3& vec);
 

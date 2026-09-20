@@ -49,6 +49,7 @@ namespace game
 
       private:
             void setup_lights() const;
+            void setup_shadows(const Matrix4& lightSpaceMatrix);
       private:
         std::vector<Entity> m_entities;
         Camera* m_camera;
@@ -60,9 +61,11 @@ namespace game
         std::unique_ptr<Mesh> m_sphere;
         std::unique_ptr<Material> m_material;
         std::unique_ptr<Material> m_post_process_material;
+        std::unique_ptr<Material> m_shadow_map_material;
         Renderer* m_renderer;
         std::unique_ptr<FrameBuffer> m_msaa_fbo;
         std::unique_ptr<FrameBuffer> m_post_process_fbo;
+        std::unique_ptr<FrameBuffer> m_shadow_map;
         MeshLoader* m_mesh_loader;
         std::vector<PointLight> m_points;
         Buffer m_light_buffer;
