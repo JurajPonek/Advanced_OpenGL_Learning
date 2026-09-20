@@ -17,11 +17,14 @@
 namespace
 {
     bool g_enable_msaa = true;
+    float g_gamma = 2.2f;
     struct PointLightBuffer
     {
         alignas(16) game::Vector3 position{};
         alignas(16) game::Color color{};
-        alignas(16) game::Vector3 attenuation{};
+        int shininess{};
+        float radius{};
+        float intensity{};
     };
 
     struct LightBuffer
@@ -39,7 +42,7 @@ namespace game
     AdvancedLightningScene::AdvancedLightningScene(ResourceLoader& resource_loader, Window* window, Camera* camera,
                                                    Renderer* renderer, MeshLoader* mesh_loader)
         : m_entities{}, m_camera{camera}, m_renderer{renderer}, m_mesh_loader{mesh_loader},
-          m_points{{{0.0f, 5.0f, 1.0f}, {0.5f, 0.5f, 0.5f}, 1.0f, 0.07f, 0.0017f}}, m_light_buffer{1024u},
+          m_points{{{0.0f, 5.0f, 1.0f}, {0.5f, 0.5f, 0.5f}, 64, 25.0f, 30.0f}}, m_light_buffer{1024u},
           m_directional{{0.0f, -1.0f, .0f}, {.0f, .0f, .0f}}, m_ambient{0.3f, 0.3f, 0.3f}
     {
         FramebufferSpecification spec{};
@@ -51,8 +54,8 @@ namespace game
         spec.samples = 1;
         m_post_process_fbo = std::make_unique<FrameBuffer>(spec);
 
-        m_default_texture = std::make_unique<Texture>(resource_loader.load_binary("container2.png"));
-        m_plane_texture = std::make_unique<Texture>(resource_loader.load_binary("wooden_floor.png"));
+        m_default_texture = std::make_unique<Texture>(resource_loader.load_binary("container2.png"), TextureFormat::SRGBA);
+        m_plane_texture = std::make_unique<Texture>(resource_loader.load_binary("wooden_floor.png"), TextureFormat::SRGBA);
         m_sampler = std::make_unique<Sampler>();
         const Texture* textures1[]{m_default_texture.get()};
         const Sampler* samplers1[]{m_sampler.get()};
@@ -104,11 +107,13 @@ namespace game
 
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ::glDisable(GL_DEPTH_TEST);
+        m_post_process_material->set_uniform("gamma", g_gamma);
         m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_post_process_fbo.get());
     }
     void AdvancedLightningScene::on_imgui_render() 
     { 
         ::ImGui::Checkbox("MSAA", &g_enable_msaa);
+        ::ImGui::SliderFloat("Gamma", &g_gamma, 0.0f, 5.0f);
         ::ImGuiIO& io = ImGui::GetIO();
         ::ImGuizmo::SetOrthographic(false);
         ::ImGuizmo::BeginFrame();
@@ -132,7 +137,13 @@ namespace game
         if (::ImGui::CollapsingHeader("directional"))
         {
             float colors[3]{};
+            float dir[3]{};
             std::memcpy(colors, &m_directional.color, sizeof(colors));
+            std::memcpy(dir, &m_directional.direction, sizeof(dir));
+            if (::ImGui::SliderFloat3("Direction", dir, -10.0f, 10.0f))
+            {
+                std::memcpy(&m_directional.direction, dir, sizeof(dir));
+            };
             if (::ImGui::ColorPicker3("directional color", colors))
             {
                 std::memcpy(&m_directional.color, colors, sizeof(colors));
@@ -142,11 +153,11 @@ namespace game
         {
             float colors[3]{};
             std::memcpy(colors, &point.color, sizeof(colors));
-            const auto header_name = std::format("color {}", index);
+            const auto header_name = std::format("pointlight {}", index);
             const auto picker_name = std::format("color {}", index);
-            const auto const_name = std::format("constant {}", index);
-            const auto linear_name = std::format("linear {}", index);
-            const auto quad_name = std::format("quadratic {}", index);
+            const auto shininess_name = std::format("shininess {}", index);
+            const auto radius_name = std::format("radius {}", index);
+            const auto intensity_name = std::format("intensity {}", index);
             if (::ImGui::CollapsingHeader(header_name.c_str()))
             {
                 if (::ImGui::ColorPicker3(picker_name.c_str(), colors))
@@ -156,14 +167,17 @@ namespace game
                     point.color.b = colors[2];
                     selected_point = index;
                 }
-                ::ImGui::SliderFloat(const_name.c_str(), &point.const_attenuation, 0.0f, 1.0f);
-                ::ImGui::SliderFloat(linear_name.c_str(), &point.linear_attenuation, 0.0f, 1.0f);
-                ::ImGui::SliderFloat(quad_name.c_str(), &point.quad_attenuation, 0.0f, .1f);
+
+                ::ImGui::SliderInt(shininess_name.c_str(), &point.shininess, 0, 128);
+                ::ImGui::SliderFloat(radius_name.c_str(), &point.radius, 0.0f, 100.0f);
+                ::ImGui::SliderFloat(intensity_name.c_str(), &point.intensity, 0.0f, 100.0f);
             }
         }
+        auto view = m_camera->get_view();
+        auto projection = m_camera->get_projection();
         auto& point = m_points[selected_point];
         auto translate = Matrix4{point.position};
-        ::ImGuizmo::Manipulate(m_camera->get_view().data(), m_camera->get_projection().data(), ::ImGuizmo::TRANSLATE,
+        ::ImGuizmo::Manipulate(view.data(), projection.data(), ::ImGuizmo::TRANSLATE,
                                ::ImGuizmo::WORLD, const_cast<float*>(translate.data().data()), nullptr, nullptr,
                                nullptr, nullptr);
         point.position.x = translate.data()[12];
@@ -186,7 +200,7 @@ namespace game
             PointLightBuffer point_buffer = {
                 point.position,
                 point.color,
-                {point.const_attenuation, point.linear_attenuation, point.quad_attenuation}};
+                point.shininess, point.radius, point.intensity};
             writer.write(point_buffer);
         }
         ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_light_buffer.get_native_handle());

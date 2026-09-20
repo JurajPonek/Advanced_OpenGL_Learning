@@ -13,11 +13,18 @@ namespace game
         COLORATTACHMENT,
         DEPTHATTACHMENT,
     };
+    enum class TextureFormat
+    {
+        SRGBA,
+        RGBA
+
+    };
     class Texture
     {
       
       public:
         Texture(std::span<const std::byte> data);
+        Texture(std::span<const std::byte> data, TextureFormat format);
         Texture(std::span<const std::byte> data, std::uint32_t width, std::uint32_t height);
         Texture(TextureUsage usage, std::uint32_t width, std::uint32_t height, size_t samples);
         

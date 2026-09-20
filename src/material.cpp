@@ -86,7 +86,7 @@ namespace game
         if (uniform_count != 0)
         {
             ::GLint max_name_lenght{};
-            ::glGetProgramiv(m_handle, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &max_name_lenght);
+            ::glGetProgramiv(m_handle, GL_ACTIVE_UNIFORM_MAX_LENGTH, &max_name_lenght);
             log::debug("Max name lenght {}", max_name_lenght);
             ::GLsizei lenght{};
             ::GLsizei count{};
@@ -115,21 +115,27 @@ namespace game
     {
         const auto uniform = m_uniforms.find(name);
         ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
-        ::glUniformMatrix4fv(uniform->second, 1, GL_FALSE, data.data().data());
+        ::glProgramUniformMatrix4fv(m_handle, uniform->second, 1, GL_FALSE, data.data().data());
     }
 
     void Material::set_uniform(std::string_view name, int obj) const
     {
         const auto uniform = m_uniforms.find(name);
         ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
-        ::glUniform1i(uniform->second, obj);
+        ::glProgramUniform1i(m_handle, uniform->second, obj);
+    }
+    void Material::set_uniform(std::string_view name, float obj) const
+    {
+        const auto uniform = m_uniforms.find(name);
+        ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
+        ::glProgramUniform1f(m_handle, uniform->second, obj);
     }
     void Material::bind_texture(std::uint32_t index, const Texture* texture, const Sampler* sampler) const
     {
         ::glBindTextureUnit(index, texture->get_native_handle());
         ::glBindSampler(index, sampler->get_native_handle());
         const auto uniform_name = std::format("tex{}", index);
-        set_uniform(uniform_name, index);
+        set_uniform(uniform_name, static_cast<int>(index));
     }
     void Material::bind_textures(std::span<const std::tuple<const Texture*, const Sampler*>> tex_samps) const
     {

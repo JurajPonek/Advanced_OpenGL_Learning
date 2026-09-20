@@ -16,7 +16,9 @@ struct PointLight
 {
     vec3 point_pos;
     vec3 point_color;
-    vec3 attenuation;
+    int shininess;
+    float radius;
+    float intensity;
 };
 
 layout(std430, binding = 1) readonly buffer lights
@@ -27,6 +29,20 @@ layout(std430, binding = 1) readonly buffer lights
     int num_of_points;
     PointLight points[];
 };
+
+
+
+
+float calculate_attenuation(float distance, float radius)
+{
+    float att = 1 / (distance * distance + 1.0f);
+    
+    float factor = distance / radius;
+    float smoothCutoff = clamp(1.0 - factor * factor * factor * factor, 0.0, 1.0);
+    smoothCutoff = smoothCutoff * smoothCutoff;
+
+    return att * smoothCutoff;
+}
 
 
 vec3 calculate_ambient()
@@ -44,28 +60,26 @@ vec3 calculate_direction()
 
 vec3 calculate_point(int index)
 {
-    vec3 attenuation = points[index].attenuation;
     vec3 color = points[index].point_color;
     vec3 pos = points[index].point_pos;
+    int shininess = points[index].shininess;
+    float radius = points[index].radius;
+    float intensity = points[index].intensity;
 
     float distance = length(pos - frag_pos.xyz);
-    float att = 1.0 / (attenuation.x + (attenuation.y * distance) + (attenuation.z * (distance * distance)));
 
     vec3 ligth_dir = normalize(pos - frag_pos.xyz);
     vec3 normal = normalize(o_normal);
     vec3 view_dir = normalize(camera_position - frag_pos.xyz);
     vec3 halfway = normalize(view_dir + ligth_dir);
     float diff = max(dot(ligth_dir, normal), 0.0f);
+    float spec = 0.0f;
     if (diff > 0.0f)
     {
-        float spec = pow(max(dot(halfway, normal), 0.0f), 64);
+        spec = pow(max(dot(halfway, normal), 0.0f), shininess); // vynasobvit spec mapou
     }
-    else 
-    {
-        float spec = 0.0f;
-    }
-    float spec = pow(max(dot(halfway, normal), 0.0f), 64); // vynasobvit spec mapou
-    return ((diff + spec) * att) * color;
+    float att = calculate_attenuation(distance, radius);
+    return ((diff + spec) * att) * color * intensity;
 }
 
 void main()

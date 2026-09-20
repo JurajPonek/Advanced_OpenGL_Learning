@@ -25,6 +25,7 @@ namespace game
             void use() const;
             void set_uniform(std::string_view name, const Matrix4& data) const;
             void set_uniform(std::string_view name, int obj) const;
+            void set_uniform(std::string_view name, float obj) const;
             void bind_texture(std::uint32_t index, const Texture* texture, const Sampler* sampler) const;
             void bind_textures(std::span<const std::tuple<const Texture*, const Sampler*>> tex_samps) const;
             void bind_cubemap(const CubeMap* texture, const Sampler* sampler) const;

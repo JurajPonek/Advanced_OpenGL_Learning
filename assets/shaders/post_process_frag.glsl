@@ -3,9 +3,12 @@ layout (location = 0) in vec2 inUV;
 layout (location = 0) out vec4 fragColor;
 
 layout (binding = 0) uniform sampler2D tex0;
+uniform float gamma;
 
 void main()
 {
-    vec3 sceneColor = vec3(texture(tex0, inUV).rgb);
-    fragColor = vec4(sceneColor, 1.0);
+    vec3 linear_color = vec3(texture(tex0, inUV).rgb);
+    //float gamma = 2.2;
+    vec3 corrected_color = pow(linear_color, vec3(1.0/gamma));
+    fragColor = vec4(corrected_color, 1.0);
 }
