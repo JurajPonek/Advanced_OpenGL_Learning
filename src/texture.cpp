@@ -100,10 +100,21 @@ namespace game
             
         }
 
-        if (samples == 1)
+        if (samples == 1 && usage == TextureUsage::COLORATTACHMENT)
         {
             ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+        else if (samples == 1 && usage == TextureUsage::DEPTHATTACHMENT)
+        {
+            ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            ::glTextureParameterfv(m_handle, GL_TEXTURE_BORDER_COLOR, borderColor);
         }
     }
     ::GLuint Texture::get_native_handle() const { return m_handle; }

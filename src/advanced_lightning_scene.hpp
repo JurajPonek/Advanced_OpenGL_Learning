@@ -56,6 +56,7 @@ namespace game
         std::unique_ptr<Texture> m_default_texture;
         std::unique_ptr<Texture> m_plane_texture;
         std::unique_ptr<Sampler> m_sampler;
+        std::unique_ptr<Sampler> m_shadow_map_sampler;
         std::unique_ptr<Mesh> m_cube;
         std::unique_ptr<Mesh> m_plane;
         std::unique_ptr<Mesh> m_sphere;

@@ -6,7 +6,7 @@ in vec3 o_normal;
 in vec4 frag_pos;
 in vec4 frag_pos_light_space;
 uniform sampler2D tex0;
-uniform sampler2D tex1;
+uniform sampler2DShadow tex1;
 layout(std140, binding = 0) uniform camera
 {
     mat4 view;
@@ -37,10 +37,30 @@ float calculate_shadow(vec4 fragPosLightSpace)
 {
     vec3 proj_coords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     vec3 frag_coord = proj_coords * 0.5 + 0.5;
-    float closestDepth = texture(tex1, frag_coord.xy).r;
+    if (frag_coord.z > 1.0)
+    {
+        return 0.0;
+    }
+    float bias = max(0.05 * (1.0 - dot(normalize(o_normal), -direction)), 0.005); // -direction lebo chceme dopadajuci luc
+    
     float currentDepth = frag_coord.z;
-    float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
-    return shadow;
+    vec2 texel_size = 1.0 / textureSize(tex1, 0);
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            vec2 offset = vec2(x,y) * texel_size;
+            shadow += texture(tex1, vec3(frag_coord.xy + offset, currentDepth - bias)); // pouzivame sampler2DShadow cize hardwerovo axcelerovane samplovanie 
+            //funkcia texture() sama vykoná porovnanie a hardvérovo spriemeruje 4 susedné body zadarmo
+            //funkcia texture() berie vec3 
+            //.xy = UV súradnice v mape.
+            //.z = Hĺbka, ktorú chceš otestovať (tvoja vzdialenosť mínus bias).
+            //vracia float v rozsahu od 0.0 do 1.0 GPU to hardwerovo vyladilo
+        }
+    }
+    shadow /= 9.0;
+    return 1.0 - shadow;
 }
 
 float calculate_attenuation(float distance, float radius)

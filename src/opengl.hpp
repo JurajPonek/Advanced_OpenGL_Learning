@@ -107,7 +107,9 @@
     DO(PFNGLDEBUGMESSAGECONTROLPROC, glDebugMessageControl)                                                            \
     DO(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced)                                                        \
     DO(PFNGLTEXIMAGE2DMULTISAMPLEPROC, glTexImage2DMultisample)                                                        \
-    DO(PFNGLTEXTURESTORAGE2DMULTISAMPLEPROC, glTextureStorage2DMultisample)
+    DO(PFNGLTEXTURESTORAGE2DMULTISAMPLEPROC, glTextureStorage2DMultisample)                                            \
+    DO(PFNGLTEXTUREPARAMETERFVPROC, glTextureParameterfv)                                                              \
+    
 
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;

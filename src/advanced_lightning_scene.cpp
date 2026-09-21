@@ -6,6 +6,7 @@
 #include "imgui.h"
 #include "matrix4.hpp"
 #include "opengl.hpp"
+#include "sampler.hpp"
 #include "texture.hpp"
 #include "vector3.hpp"
 #include "vendor/opengl/glext.h"
@@ -62,6 +63,7 @@ namespace game
         m_default_texture = std::make_unique<Texture>(resource_loader.load_binary("container2.png"), TextureFormat::SRGBA);
         m_plane_texture = std::make_unique<Texture>(resource_loader.load_binary("wooden_floor.png"), TextureFormat::SRGBA);
         m_sampler = std::make_unique<Sampler>();
+        m_shadow_map_sampler = std::make_unique<Sampler>(SamplerUsage::SHADOWMAP);
         const Texture* textures1[]{m_default_texture.get()};
         const Sampler* samplers1[]{m_sampler.get()};
         const Texture* textures2[]{m_plane_texture.get()};
@@ -253,6 +255,6 @@ namespace game
     {
         m_material->use();
         m_material->set_uniform("light_space_matrix", lightSpaceMatrix);
-        m_material->bind_texture(1, &m_shadow_map->get_depth_attachment(), m_sampler.get());
+        m_material->bind_texture(1, &m_shadow_map->get_depth_attachment(), m_shadow_map_sampler.get());
     }
 } // namespace game
