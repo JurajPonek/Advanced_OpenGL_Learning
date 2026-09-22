@@ -5,10 +5,13 @@
 #include "error.hpp"
 #include "opengl.hpp"
 #include "src/log.hpp"
+#include "src/matrix4.hpp"
+#include "vector3.hpp"
 #include "vendor/opengl/glext.h"
 #include <cstdint>
 #include <gl/gl.h>
 #include <ranges>
+#include <span>
 #include <string>
 namespace game
 {
@@ -105,6 +108,12 @@ namespace game
         ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
         ::glProgramUniformMatrix4fv(m_handle, uniform->second, 1, GL_FALSE, data.data().data());
     }
+    void Material::set_uniform(std::string_view name, std::span<const Matrix4> data) const
+    {
+        const auto uniform = m_uniforms.find(name);
+        ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
+        ::glProgramUniformMatrix4fv(m_handle, uniform->second, 6, GL_FALSE, data.data()->data().data());
+    }
 
     void Material::set_uniform(std::string_view name, int obj) const
     {
@@ -117,6 +126,12 @@ namespace game
         const auto uniform = m_uniforms.find(name);
         ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
         ::glProgramUniform1f(m_handle, uniform->second, obj);
+    }
+    void Material::set_uniform(std::string_view name, const Vector3& obj) const
+    {
+        const auto uniform = m_uniforms.find(name);
+        ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
+        ::glProgramUniform3f(m_handle, uniform->second, obj.x, obj.y, obj.z);
     }
     void Material::bind_texture(std::uint32_t index, const Texture* texture, const Sampler* sampler) const
     {
@@ -139,5 +154,12 @@ namespace game
         ::glBindSampler(0, sampler->get_native_handle());
         const auto uniform_name = std::format("tex{}", 0);
         set_uniform(uniform_name, 0);
+    }
+    void Material::bind_depth_cubemap_array(std::uint32_t index, const DepthCubeMap* texture, const Sampler* sampler) const
+    {
+        ::glBindTextureUnit(index, texture->get_native_handle());
+        ::glBindSampler(0, sampler->get_native_handle());
+        const auto uniform_name = std::format("tex{}", index);
+        set_uniform(uniform_name, static_cast<int>(index));
     }
 } // namespace game

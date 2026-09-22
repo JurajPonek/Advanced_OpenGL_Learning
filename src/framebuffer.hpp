@@ -1,6 +1,7 @@
 #pragma once
 
 #include "auto_release.hpp"
+#include "depth_cubemap.hpp"
 #include "opengl.hpp"
 #include "texture.hpp"
 #include <cstddef>
@@ -29,6 +30,7 @@ namespace game
         void unbind() const;
         const Texture& get_color_attachment(size_t index = 0) const;
         const Texture& get_depth_attachment() const;
+        const DepthCubeMap& get_depth_cubemap_attachment() const;
         std::uint32_t get_width() const;
         std::uint32_t get_height() const;
 
@@ -37,6 +39,7 @@ namespace game
         FramebufferSpecification m_specification;
         std::vector<std::unique_ptr<Texture>> m_color_attachments;
         std::unique_ptr<Texture> m_depth_attachment;
+        std::unique_ptr<DepthCubeMap> m_depth_cube_map;
     };
 
 } // namespace game

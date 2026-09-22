@@ -1,4 +1,5 @@
 #include "framebuffer.hpp"
+#include "depth_cubemap.hpp"
 #include "error.hpp"
 #include "opengl.hpp"
 #include "texture.hpp"
@@ -22,13 +23,19 @@ namespace game
                 m_depth_attachment = std::make_unique<Texture>(usage, m_specification.width, m_specification.height, m_specification.samples);
                 ::glNamedFramebufferTexture(m_handle, GL_DEPTH_ATTACHMENT,m_depth_attachment->get_native_handle(), 0);
             }
-            else 
+            else if (usage == TextureUsage::COLORATTACHMENT) 
             {
                 size_t index = m_color_attachments.size();
                 m_color_attachments.push_back(std::make_unique<Texture>(usage, m_specification.width, m_specification.height, m_specification.samples));
                 ::glNamedFramebufferTexture(m_handle, GL_COLOR_ATTACHMENT0 + index,
                                                 m_color_attachments.back()->get_native_handle(), 0);
             }
+            else 
+            {
+                m_depth_cube_map = std::make_unique<DepthCubeMap>(m_specification.width, m_specification.height, 6);
+                ::glNamedFramebufferTexture(m_handle, GL_DEPTH_ATTACHMENT, m_depth_cube_map->get_native_handle(), 0);
+            }
+            
         }
         if (m_color_attachments.empty())
         {
@@ -65,6 +72,11 @@ namespace game
     {
         ensure(m_depth_attachment, "Framebuffer doest have depth attachment");
         return *m_depth_attachment;
+    }
+    const DepthCubeMap& FrameBuffer::get_depth_cubemap_attachment() const
+    {
+        ensure(m_depth_cube_map, "Framebuffer doest have depth cubemap attachment");
+        return *m_depth_cube_map;
     }
     std::uint32_t FrameBuffer::get_width() const
     {

@@ -97,7 +97,10 @@ namespace game
                 ::glTextureStorage2D(m_handle, 1, GL_DEPTH_COMPONENT24, width, height);
                 break;
             }
-            
+
+
+        case DEPTHCUBEMAP:
+            break;
         }
 
         if (samples == 1 && usage == TextureUsage::COLORATTACHMENT)

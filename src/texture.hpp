@@ -1,6 +1,7 @@
 #pragma once
 
 #include "auto_release.hpp"
+#include "depth_cubemap.hpp"
 #include "opengl.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -12,6 +13,7 @@ namespace game
     {
         COLORATTACHMENT,
         DEPTHATTACHMENT,
+        DEPTHCUBEMAP
     };
     enum class TextureFormat
     {

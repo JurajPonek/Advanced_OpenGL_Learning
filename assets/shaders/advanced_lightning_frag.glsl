@@ -7,6 +7,8 @@ in vec4 frag_pos;
 in vec4 frag_pos_light_space;
 uniform sampler2D tex0;
 uniform sampler2DShadow tex1;
+uniform samplerCubeArray tex2;
+uniform float far_plane;
 layout(std140, binding = 0) uniform camera
 {
     mat4 view;
@@ -21,6 +23,7 @@ struct PointLight
     int shininess;
     float radius;
     float intensity;
+    int shadow_map_index;
 };
 
 layout(std430, binding = 1) readonly buffer lights
@@ -33,7 +36,22 @@ layout(std430, binding = 1) readonly buffer lights
 };
 
 
-float calculate_shadow(vec4 fragPosLightSpace)
+float calculate_point_shadow(int index)
+{
+    vec3 light_pos = points[index].point_pos; 
+    int shadow_map_idx = points[index].shadow_map_index; 
+    
+    vec3 frag_to_light = frag_pos.xyz - light_pos;
+    float closest_depth = texture(tex2, vec4(frag_to_light, float(shadow_map_idx))).r;
+    float current_depth = length(frag_to_light) / far_plane;
+    if (current_depth > 1.0)
+        return 0.0;
+    float bias = 0.005;
+    return (current_depth - bias) > closest_depth ? 1.0 : 0.0;
+
+}
+
+float calculate_directional_shadow(vec4 fragPosLightSpace)
 {
     vec3 proj_coords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     vec3 frag_coord = proj_coords * 0.5 + 0.5;
@@ -46,9 +64,9 @@ float calculate_shadow(vec4 fragPosLightSpace)
     float currentDepth = frag_coord.z;
     vec2 texel_size = 1.0 / textureSize(tex1, 0);
     float shadow = 0.0;
-    for (int x = -1; x <= 1; ++x)
+    for (int x = -2; x <= 2; ++x)
     {
-        for(int y = -1; y <= 1; ++y)
+        for(int y = -2; y <= 2; ++y)
         {
             vec2 offset = vec2(x,y) * texel_size;
             shadow += texture(tex1, vec3(frag_coord.xy + offset, currentDepth - bias)); // pouzivame sampler2DShadow cize hardwerovo axcelerovane samplovanie 
@@ -59,7 +77,7 @@ float calculate_shadow(vec4 fragPosLightSpace)
             //vracia float v rozsahu od 0.0 do 1.0 GPU to hardwerovo vyladilo
         }
     }
-    shadow /= 9.0;
+    shadow /= 25.0;
     return 1.0 - shadow;
 }
 
@@ -120,10 +138,15 @@ void main()
     vec3 point = vec3(0.0);
     for (int i = 0; i < num_of_points; ++i)
     {
-        point += calculate_point(i);
+        float point_shadow = 0.0;
+        if (points[i].shadow_map_index >= 0)
+        {
+            point_shadow += calculate_point_shadow(i);
+        }
+        point += (1.0 - point_shadow) * calculate_point(i);
     }
-    float shadow = calculate_shadow(frag_pos_light_space);
-    frag_color = vec4((ambient + (1.0 - shadow) * direction + point) * albedo.rgb, albedo.a);
+    float dir_shadow = calculate_directional_shadow(frag_pos_light_space);
+    frag_color = vec4((ambient + (1.0 - dir_shadow) * direction + point) * albedo.rgb, albedo.a);
 }
 
 
