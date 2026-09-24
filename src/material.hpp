@@ -1,6 +1,5 @@
 #pragma once
 #include "cubemap.hpp"
-#include "depth_cubemap.hpp"
 #include "opengl.hpp"
 #include "auto_release.hpp"
 #include "sampler.hpp"
@@ -32,7 +31,7 @@ namespace game
             void bind_texture(std::uint32_t index, const Texture* texture, const Sampler* sampler) const;
             void bind_textures(std::span<const std::tuple<const Texture*, const Sampler*>> tex_samps) const;
             void bind_cubemap(const CubeMap* texture, const Sampler* sampler) const;
-            void bind_depth_cubemap_array(std::uint32_t index, const DepthCubeMap* texture, const Sampler* sampler) const;
+            void bind_depth_cubemap_array(std::uint32_t index, const Texture* texture, const Sampler* sampler) const;
         
         private:
             AutoRelease<GLuint> m_handle;

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "auto_release.hpp"
 #include "buffer.hpp"
 #include "camera.hpp"
 #include "cubemap.hpp"
-#include "depth_cubemap.hpp"
 #include "entity.hpp"
 #include "framebuffer.hpp"
 #include "material.hpp"
@@ -81,5 +81,8 @@ namespace game
             DirectionalLight m_directional;
             Color m_ambient;
             Matrix4 m_shadow_proj;
+
+
+
     };
 } // namespace game

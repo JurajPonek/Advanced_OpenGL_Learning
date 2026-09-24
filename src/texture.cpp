@@ -9,6 +9,35 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+namespace
+{
+
+    GLenum to_gl_internal_format(const game::TextureFormat& format)
+    {
+        switch (format)
+        {
+            using enum game::TextureFormat;
+        case RGBA8:
+            return GL_RGBA8;
+        case R32I:
+            return GL_R32I;
+        case Depth24Stencil8:
+            return GL_DEPTH24_STENCIL8;
+        case Depth32F:
+            return GL_DEPTH_COMPONENT32F;
+        case SRGBA:
+            return GL_SRGB8_ALPHA8;
+        default:
+        return GL_NONE;
+        }
+    }
+    bool is_depth_format(game::TextureFormat format)
+    {
+        return format == game::TextureFormat::Depth24Stencil8 || format == game::TextureFormat::Depth32F;
+    }
+} // namespace
+
 namespace game
 {
     Texture::Texture(std::span<const std::byte> data)
@@ -63,61 +92,38 @@ namespace game
         ::glTextureStorage2D(m_handle, 1, GL_RGBA8, width, height);
         ::glTextureSubImage2D(m_handle, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, raw_data.get());
     }
-    Texture::Texture(TextureUsage usage, std::uint32_t width, std::uint32_t height, size_t samples)
-        : m_handle{0u, [](auto tex) { ::glDeleteTextures(1u, &tex); }}
+
+    Texture::Texture(const TextureSpecification& spec) : m_handle{0u, [](auto tex) { ::glDeleteTextures(1u, &tex); }}
     {
 
-        ::GLenum gl_usage = samples == 1 ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE;
-        ::glCreateTextures(gl_usage, 1, &m_handle);
-
-        
-        switch (usage)
+        if (spec.type == TextureType::TEXTURE2D)
         {
-            using enum TextureUsage;
-        case COLORATTACHMENT:
-            if (samples > 1)
+            if (spec.samples == 1)
             {
-                ::glTextureStorage2DMultisample(m_handle, samples, GL_RGBA8, width, height, GL_TRUE);
-                break;
+                ::glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
+                ::glTextureStorage2D(m_handle, 1, to_gl_internal_format(spec.format), spec.width, spec.height);
+                GLenum filter = is_depth_format(spec.format) ? GL_NEAREST : GL_LINEAR;
+                ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, filter);
+                ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, filter);
+                ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             }
-            else
+            else 
             {
-                ::glTextureStorage2D(m_handle, 1, GL_RGBA8, width, height);
-                break;
+                ::glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &m_handle);
+                ::glTextureStorage2DMultisample(m_handle, spec.samples, to_gl_internal_format(spec.format), spec.width, spec.height, GL_TRUE);
             }
-
-        case DEPTHATTACHMENT:
-            if (samples > 1)
-            {
-                ::glTextureStorage2DMultisample(m_handle, samples, GL_DEPTH_COMPONENT24, width, height, GL_TRUE);
-                break;
-            }
-            else
-            {
-                ::glTextureStorage2D(m_handle, 1, GL_DEPTH_COMPONENT24, width, height);
-                break;
-            }
-
-
-        case DEPTHCUBEMAP:
-            break;
         }
-
-        if (samples == 1 && usage == TextureUsage::COLORATTACHMENT)
+        else if (spec.type == TextureType::DEPTHCUBEMAP)
         {
-            ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        }
-        else if (samples == 1 && usage == TextureUsage::DEPTHATTACHMENT)
-        {
+            ::glCreateTextures(GL_TEXTURE_CUBE_MAP_ARRAY, 1, &m_handle);
+            ::glTextureStorage3D(m_handle, 1, to_gl_internal_format(spec.format), spec.width, spec.height,
+                                 spec.max_lights * 6);
             ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-            ::glTextureParameterfv(m_handle, GL_TEXTURE_BORDER_COLOR, borderColor);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         }
     }
     ::GLuint Texture::get_native_handle() const { return m_handle; }

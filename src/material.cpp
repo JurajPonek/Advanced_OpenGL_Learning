@@ -6,6 +6,7 @@
 #include "opengl.hpp"
 #include "src/log.hpp"
 #include "src/matrix4.hpp"
+#include "texture.hpp"
 #include "vector3.hpp"
 #include "vendor/opengl/glext.h"
 #include <cstdint>
@@ -155,7 +156,7 @@ namespace game
         const auto uniform_name = std::format("tex{}", 0);
         set_uniform(uniform_name, 0);
     }
-    void Material::bind_depth_cubemap_array(std::uint32_t index, const DepthCubeMap* texture, const Sampler* sampler) const
+    void Material::bind_depth_cubemap_array(std::uint32_t index, const Texture* texture, const Sampler* sampler) const
     {
         ::glBindTextureUnit(index, texture->get_native_handle());
         ::glBindSampler(0, sampler->get_native_handle());

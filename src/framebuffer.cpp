@@ -1,5 +1,4 @@
 #include "framebuffer.hpp"
-#include "depth_cubemap.hpp"
 #include "error.hpp"
 #include "opengl.hpp"
 #include "texture.hpp"
@@ -8,85 +7,77 @@
 #include <gl/gl.h>
 #include <memory>
 
+namespace
+{
+    bool is_depth_format(game::TextureFormat format)
+    {
+        return (format == game::TextureFormat::Depth24Stencil8 || format == game::TextureFormat::Depth32F) ? true
+                                                                                                           : false;
+    }
+} // namespace
+
 namespace game
 {
     FrameBuffer::FrameBuffer(const FramebufferSpecification& spec)
-        : m_handle{0u, [](const auto buffer){::glDeleteFramebuffers(1, &buffer);}},
-        m_specification{spec}
+        : m_handle{0u, [](const auto buffer) { ::glDeleteFramebuffers(1, &buffer); }}, m_specification{spec}
     {
-        
         ::glCreateFramebuffers(1, &m_handle);
-        for (auto usage : m_specification.attachments)
+        std::vector<GLenum> draw_buffers;
+        for (const auto& attachment_format : m_specification.attachments)
         {
-            if (usage == TextureUsage::DEPTHATTACHMENT)
+            TextureSpecification texture_spec;
+            texture_spec.width = m_specification.width;
+            texture_spec.height = m_specification.height;
+            texture_spec.type = m_specification.type;
+            texture_spec.samples = m_specification.samples;
+            texture_spec.format = attachment_format;
+            texture_spec.max_lights = m_specification.max_lights;
+            if (is_depth_format(attachment_format))
             {
-                m_depth_attachment = std::make_unique<Texture>(usage, m_specification.width, m_specification.height, m_specification.samples);
-                ::glNamedFramebufferTexture(m_handle, GL_DEPTH_ATTACHMENT,m_depth_attachment->get_native_handle(), 0);
+                m_depth_attachment.emplace(texture_spec);
+                GLenum attachment_point = (attachment_format == TextureFormat::Depth24Stencil8)
+                                              ? GL_DEPTH_STENCIL_ATTACHMENT
+                                              : GL_DEPTH_ATTACHMENT;
+                ::glNamedFramebufferTexture(m_handle, attachment_point, m_depth_attachment->get_native_handle(), 0);
             }
-            else if (usage == TextureUsage::COLORATTACHMENT) 
+            else
             {
                 size_t index = m_color_attachments.size();
-                m_color_attachments.push_back(std::make_unique<Texture>(usage, m_specification.width, m_specification.height, m_specification.samples));
-                ::glNamedFramebufferTexture(m_handle, GL_COLOR_ATTACHMENT0 + index,
-                                                m_color_attachments.back()->get_native_handle(), 0);
+                m_color_attachments.push_back({texture_spec});
+                GLenum attachment_point = GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index);
+
+                ::glNamedFramebufferTexture(m_handle, attachment_point, m_color_attachments.back().get_native_handle(),
+                                            0);
+                draw_buffers.push_back(attachment_point);
             }
-            else 
-            {
-                m_depth_cube_map = std::make_unique<DepthCubeMap>(m_specification.width, m_specification.height, 6);
-                ::glNamedFramebufferTexture(m_handle, GL_DEPTH_ATTACHMENT, m_depth_cube_map->get_native_handle(), 0);
-            }
-            
         }
-        if (m_color_attachments.empty())
+        if (draw_buffers.empty())
         {
             ::glNamedFramebufferDrawBuffer(m_handle, GL_NONE);
             ::glNamedFramebufferReadBuffer(m_handle, GL_NONE);
         }
         else
         {
-            ensure(m_color_attachments.size() < 4, "Exceeded color attachment limit");
-            GLenum buffers[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2,
-                                 GL_COLOR_ATTACHMENT3};
-            ::glNamedFramebufferDrawBuffers(m_handle, m_color_attachments.size(), buffers);
+            ::glNamedFramebufferDrawBuffers(m_handle, m_color_attachments.size(), draw_buffers.data());
         }
-        ensure(::glCheckNamedFramebufferStatus(m_handle, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Failed to complete framebuffer");
+        ensure(::glCheckNamedFramebufferStatus(m_handle, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
+               "Failed to complete framebuffer");
     }
-    ::GLuint FrameBuffer::get_native_handle() const
-    {
-        return m_handle;
-    }
+
+
+    ::GLuint FrameBuffer::get_native_handle() const { return m_handle; }
     void FrameBuffer::bind() const
     {
         ::glBindFramebuffer(GL_FRAMEBUFFER, m_handle);
         ::glViewport(0, 0, m_specification.width, m_specification.height);
     }
-    void FrameBuffer::unbind() const
-    {
-        ::glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-    const Texture& FrameBuffer::get_color_attachment(size_t index) const
-    {
-        return *m_color_attachments[index].get();
-    }
+    void FrameBuffer::unbind() const { ::glBindFramebuffer(GL_FRAMEBUFFER, 0); }
+    const Texture& FrameBuffer::get_color_attachment(size_t index) const { return m_color_attachments[index]; }
     const Texture& FrameBuffer::get_depth_attachment() const
     {
         ensure(m_depth_attachment, "Framebuffer doest have depth attachment");
         return *m_depth_attachment;
     }
-    const DepthCubeMap& FrameBuffer::get_depth_cubemap_attachment() const
-    {
-        ensure(m_depth_cube_map, "Framebuffer doest have depth cubemap attachment");
-        return *m_depth_cube_map;
-    }
-    std::uint32_t FrameBuffer::get_width() const
-    {
-        return m_specification.width;
-    }
-    std::uint32_t FrameBuffer::get_height() const
-    {
-        return m_specification.height;
-    }
-
-
-
-}
+    std::uint32_t FrameBuffer::get_width() const { return m_specification.width; }
+    std::uint32_t FrameBuffer::get_height() const { return m_specification.height; }
+} // namespace game

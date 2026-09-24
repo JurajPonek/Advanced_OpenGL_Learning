@@ -1,7 +1,6 @@
 #pragma once
 
 #include "auto_release.hpp"
-#include "depth_cubemap.hpp"
 #include "opengl.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -9,18 +8,32 @@
 
 namespace game
 {
-    enum class TextureUsage
+    enum class TextureType
     {
-        COLORATTACHMENT,
-        DEPTHATTACHMENT,
+        TEXTURE2D,
         DEPTHCUBEMAP
     };
+
     enum class TextureFormat
     {
+        RGBA8,
+        R32I,
+        Depth24Stencil8,
         SRGBA,
-        RGBA
-
+        Depth32F
     };
+
+    struct TextureSpecification
+    {
+        uint32_t width = 0;
+        uint32_t height = 0;
+        TextureType type;
+        TextureFormat format;
+        bool generate_mipmaps = false;
+        std::uint32_t max_lights = 0;
+        std::uint32_t samples = 1;
+    };
+
     class Texture
     {
       
@@ -28,8 +41,10 @@ namespace game
         Texture(std::span<const std::byte> data);
         Texture(std::span<const std::byte> data, TextureFormat format);
         Texture(std::span<const std::byte> data, std::uint32_t width, std::uint32_t height);
-        Texture(TextureUsage usage, std::uint32_t width, std::uint32_t height, size_t samples);
-        
+        Texture(const TextureSpecification& spec);
+      
+
+
         ::GLuint get_native_handle() const;
 
       private:

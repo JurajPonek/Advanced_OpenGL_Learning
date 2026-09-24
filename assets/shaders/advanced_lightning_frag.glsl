@@ -9,6 +9,8 @@ uniform sampler2D tex0;
 uniform sampler2DShadow tex1;
 uniform samplerCubeArray tex2;
 uniform float far_plane;
+
+
 layout(std140, binding = 0) uniform camera
 {
     mat4 view;
@@ -40,14 +42,32 @@ float calculate_point_shadow(int index)
 {
     vec3 light_pos = points[index].point_pos; 
     int shadow_map_idx = points[index].shadow_map_index; 
+
+    vec3 sample_offset_directions[20] = vec3[]
+        (
+            vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
+            vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
+            vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
+            vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
+            vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
+        ); 
     
     vec3 frag_to_light = frag_pos.xyz - light_pos;
-    float closest_depth = texture(tex2, vec4(frag_to_light, float(shadow_map_idx))).r;
-    float current_depth = length(frag_to_light) / far_plane;
+    float view_distance = length(camera_position - frag_pos.xyz);
+    float shadow = 0.0;
+    int samples = 20;
+    float bias = 0.005;
+    float disk_radius = (1.0 + (view_distance / far_plane)) / 25.0;
+    float current_depth = length(frag_to_light) / far_plane; // [0,1]
     if (current_depth > 1.0)
         return 0.0;
-    float bias = 0.005;
-    return (current_depth - bias) > closest_depth ? 1.0 : 0.0;
+    for (int i = 0; i < samples; ++i)
+    {
+        float closest_depth = texture(tex2, vec4(frag_to_light + sample_offset_directions[i] * disk_radius, float(shadow_map_idx))).r; // [0,1]
+        //texturu vzorkujeme pomocou 4D vektora vec4(smer.xyz, cislo_vrstvy)
+        shadow += (current_depth - bias) > closest_depth ? 1.0 : 0.0;
+    }
+    return shadow/float(samples);
 
 }
 

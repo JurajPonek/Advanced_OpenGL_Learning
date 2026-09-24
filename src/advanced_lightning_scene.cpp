@@ -51,25 +51,35 @@ namespace game
 {
     static constexpr std::uint32_t SHADOW_MAP_WIDTH = 2048;
     static constexpr std::uint32_t SHADOW_MAP_HEIGHT = 2048;
-    // static constexpr int MAX_POINT_LIGHTS = 6;
+    static constexpr int MAX_POINT_LIGHTS = 6;
     AdvancedLightningScene::AdvancedLightningScene(ResourceLoader& resource_loader, Window* window, Camera* camera,
                                                    Renderer* renderer, MeshLoader* mesh_loader)
         : m_entities{}, m_camera{camera}, m_renderer{renderer}, m_mesh_loader{mesh_loader}, m_points{},
           m_light_buffer{10240u}, m_directional{{0.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}}, m_ambient{0.3f, 0.3f, 0.3f}
     {
+        
+        
+
+
         FramebufferSpecification spec{};
         spec.width = window->get_width();
         spec.height = window->get_height();
         spec.samples = 8;
-        spec.attachments = {TextureUsage::COLORATTACHMENT, TextureUsage::DEPTHATTACHMENT};
+        spec.type = TextureType::TEXTURE2D;
+        spec.attachments = {TextureFormat::RGBA8, TextureFormat::Depth32F};
         m_msaa_fbo = std::make_unique<FrameBuffer>(spec);
+
         spec.samples = 1;
         m_post_process_fbo = std::make_unique<FrameBuffer>(spec);
-        spec.attachments = {TextureUsage::DEPTHATTACHMENT};
+
+        spec.attachments = {TextureFormat::Depth32F};
         spec.width = SHADOW_MAP_WIDTH;
         spec.height = SHADOW_MAP_HEIGHT;
         m_shadow_map = std::make_unique<FrameBuffer>(spec);
-        spec.attachments = {TextureUsage::DEPTHCUBEMAP};
+
+        spec.attachments = {TextureFormat::Depth32F};
+        spec.max_lights = MAX_POINT_LIGHTS;
+        spec.type = TextureType::DEPTHCUBEMAP;
         m_omnidirectional_shadow_map = std::make_unique<FrameBuffer>(spec);
         m_shadow_proj =
             Matrix4::perspective(std::numbers::pi_v<float> / 2.0f, m_omnidirectional_shadow_map->get_width(),
@@ -84,7 +94,7 @@ namespace game
             std::make_unique<Texture>(resource_loader.load_binary("wooden_floor.png"), TextureFormat::SRGBA);
         m_sampler = std::make_unique<Sampler>();
         m_shadow_map_sampler = std::make_unique<Sampler>(SamplerUsage::SHADOWMAP);
-        const Texture* textures1[]{m_default_texture.get()};
+        const Texture* textures1[]{m_default_texture.get()}; 
         const Sampler* samplers1[]{m_sampler.get()};
         const Texture* textures2[]{m_plane_texture.get()};
         const Sampler* samplers2[]{m_sampler.get()};
@@ -334,7 +344,7 @@ namespace game
     {
         m_material->use();
         m_material->set_uniform("far_plane", 25.0f);
-        m_material->bind_depth_cubemap_array(2, &m_omnidirectional_shadow_map->get_depth_cubemap_attachment(), m_sampler.get());
+        m_material->bind_depth_cubemap_array(2, &m_omnidirectional_shadow_map->get_depth_attachment(), m_sampler.get());
         
     }
 } // namespace game

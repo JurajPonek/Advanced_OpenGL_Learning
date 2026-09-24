@@ -8,6 +8,7 @@
 #include "opengl.hpp"
 #include "renderer.hpp"
 #include "resource_loader.hpp"
+#include "sampler.hpp"
 #include "src/matrix4.hpp"
 #include "texture.hpp"
 #include "window.hpp"
@@ -37,12 +38,13 @@ namespace game
         spec.width = 516;
         spec.height = 256;
         spec.samples = 1;
-        spec.attachments = {TextureUsage::COLORATTACHMENT, TextureUsage::DEPTHATTACHMENT};
+        spec.type = TextureType::TEXTURE2D;
+        spec.attachments = {TextureFormat::RGBA8, TextureFormat::Depth32F};
         m_fbo = std::make_unique<FrameBuffer>(spec);
         std::vector<std::string> cube_map_faces = {"right.jpg",  "left.jpg",  "top.jpg",
                                                    "bottom.jpg", "front.jpg", "back.jpg"};
         m_texture = std::make_unique<Texture>(resource_loader.load_binary("container2.png"), 500, 500);
-        m_sampler = std::make_unique<Sampler>();
+        m_sampler = std::make_unique<Sampler>(SamplerUsage::COLORTEXTURE);
         m_cube_map = std::make_unique<CubeMap>(cube_map_faces, resource_loader);
         const Texture* textures[]{m_texture.get()};
         const Sampler* samplers[]{m_sampler.get()};
