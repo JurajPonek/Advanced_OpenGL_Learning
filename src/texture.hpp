@@ -11,7 +11,8 @@ namespace game
     enum class TextureType
     {
         TEXTURE2D,
-        DEPTHCUBEMAP
+        DEPTHCUBEMAP,
+
     };
 
     enum class TextureFormat
@@ -30,13 +31,13 @@ namespace game
         TextureType type;
         TextureFormat format;
         bool generate_mipmaps = false;
+        bool default_normal_map_texture = false;
         std::uint32_t max_lights = 0;
         std::uint32_t samples = 1;
     };
 
     class Texture
     {
-      
       public:
         Texture(std::span<const std::byte> data);
         Texture(std::span<const std::byte> data, TextureFormat format);

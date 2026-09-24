@@ -61,10 +61,12 @@ namespace game
             const auto normals = std::span<::aiVector3D>{mesh->mNormals, mesh->mNormals + mesh->mNumVertices} |
                                  std::views::transform(to_vector3);
             std::vector<UV> uvs{};
+            std::vector<Vector3> tangents{};
             ensure(mesh->HasTextureCoords(0), "Mesh doesnt have tex coords");
             for (auto i{0u}; i < mesh->mNumVertices; ++i)
             {
                 uvs.push_back({mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y});
+                tangents.push_back({mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z});
             }
 
             auto indices = std::vector<std::uint32_t>{};
@@ -78,7 +80,7 @@ namespace game
             }
 
             m_loaded_meshes.emplace(mesh->mName.C_Str(),
-                                    LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
+                                    LoadedMeshData{vertices(positions, normals,tangents, uvs), std::move(indices)});
         }
 
         const auto loaded = m_loaded_meshes.find(model_name);
@@ -124,6 +126,7 @@ namespace game
                                  std::views::transform(to_vector3);
 
             std::vector<UV> uvs;
+            std::vector<Vector3> tangents;
             uvs.reserve(mesh->mNumVertices);
             const bool has_uv = mesh->HasTextureCoords(0);
             for (auto i{0u}; i < mesh->mNumVertices; ++i)
@@ -136,9 +139,10 @@ namespace game
                 {
                     uvs.push_back({0.0f, 0.0f});
                 }
+                tangents.push_back({mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z});
             }
 
-            auto current_vertices = vertices(positions, normals, uvs);
+            auto current_vertices = vertices(positions, normals, tangents, uvs);
             all_vertices.insert(all_vertices.end(), std::make_move_iterator(current_vertices.begin()),
                                 std::make_move_iterator(current_vertices.end()));
 
@@ -188,16 +192,48 @@ namespace game
                                    {0.0f, 1.0f, 0.0f},  {0.0f, 1.0f, 0.0f},  {0.0f, 1.0f, 0.0f},  {0.0f, 1.0f, 0.0f},
                                    {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}};
 
+
+        const Vector3 tangents[] = {// Predná stena (+Z): U rastie pozdĺž +X
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    // Zadná stena (-Z): U rastie pozdĺž -X
+                                    {-1.0f, 0.0f, 0.0f},
+                                    {-1.0f, 0.0f, 0.0f},
+                                    {-1.0f, 0.0f, 0.0f},
+                                    {-1.0f, 0.0f, 0.0f},
+                                    // Ľavá stena (-X): U rastie pozdĺž +Z
+                                    {0.0f, 0.0f, 1.0f},
+                                    {0.0f, 0.0f, 1.0f},
+                                    {0.0f, 0.0f, 1.0f},
+                                    {0.0f, 0.0f, 1.0f},
+                                    // Pravá stena (+X): U rastie pozdĺž -Z
+                                    {0.0f, 0.0f, -1.0f},
+                                    {0.0f, 0.0f, -1.0f},
+                                    {0.0f, 0.0f, -1.0f},
+                                    {0.0f, 0.0f, -1.0f},
+                                    // Horná stena (+Y): U rastie pozdĺž +X
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    // Spodná stena (-Y): U rastie pozdĺž +X
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f},
+                                    {1.0f, 0.0f, 0.0f}};
         const UV uvs[] = {{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}, {0, 0.0f},    {1.0f, 0.0f},
                           {1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
                           {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
                           {1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}};
 
+                    
         const std::vector<std::uint32_t> indices = {0,  1,  2,  2,  3,  0,  4,  5,  6,  6,  7,  4,
                                                     8,  9,  10, 10, 11, 8,  12, 13, 14, 14, 15, 12,
                                                     16, 17, 18, 18, 19, 16, 20, 21, 22, 22, 23, 20};
-        const auto new_item =
-            m_loaded_meshes.emplace("cube", LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
+        const auto new_item = m_loaded_meshes.emplace(
+            "cube", LoadedMeshData{vertices(positions, normals, tangents, uvs), std::move(indices)});
         return {new_item.first->second.vertices, new_item.first->second.indices};
     }
     MeshData MeshLoader::plane()
@@ -210,12 +246,13 @@ namespace game
         const Vector3 positions[] = {{-1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, -1.0f}};
         const Vector3 normals[] = {// X,     Y,     Z
                                    {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
+        const Vector3 tangents[] = {{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}};
         const UV uvs[] = {
 
             {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}};
         const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
-        const auto new_item =
-            m_loaded_meshes.emplace("plane", LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
+        const auto new_item = m_loaded_meshes.emplace(
+            "plane", LoadedMeshData{vertices(positions, normals, tangents, uvs), std::move(indices)});
         return {new_item.first->second.vertices, new_item.first->second.indices};
     }
     MeshData MeshLoader::sphere()
@@ -233,11 +270,15 @@ namespace game
         std::vector<Vector3> positions;
         std::vector<Vector3> normals;
         std::vector<UV> uvs;
+        std::vector<Vector3> tangents;
         std::vector<uint32_t> indices{};
 
-        positions.reserve((xSegments + 1) * (ySegments + 1));
-        normals.reserve((xSegments + 1) * (ySegments + 1));
-        uvs.reserve((xSegments + 1) * (ySegments + 1));
+        const size_t vertex_count = (xSegments + 1) * (ySegments + 1);
+        positions.reserve(vertex_count);
+        normals.reserve(vertex_count);
+        tangents.reserve(vertex_count);
+        uvs.reserve(vertex_count);
+        
         indices.reserve(xSegments * ySegments * 6);
 
         for (size_t y = 0; y <= ySegments; ++y)
@@ -247,12 +288,18 @@ namespace game
                 float xSegment = static_cast<float>(x) / static_cast<float>(xSegments);
                 float ySegment = static_cast<float>(y) / static_cast<float>(ySegments);
 
-                float xPos = std::cos(xSegment * pi * 2.0f) * std::sin(ySegment * pi);
-                float yPos = std::cos(ySegment * pi);
-                float zPos = std::sin(xSegment * pi * 2.0f) * std::sin(ySegment * pi);
+                float phi = xSegment * pi * 2.0f;
+                float theta = ySegment * pi;
+
+                float xPos = std::cos(phi) * std::sin(theta);
+                float yPos = std::cos(theta);
+                float zPos = std::sin(phi) * std::sin(theta);
 
                 positions.emplace_back(xPos, yPos, zPos);
-                normals.emplace_back(xPos, yPos, zPos); 
+                normals.emplace_back(xPos, yPos, zPos);
+
+                tangents.emplace_back(-std::sin(phi), 0.0f, std::cos(phi));
+
                 uvs.emplace_back(xSegment, ySegment);
             }
         }
@@ -275,7 +322,7 @@ namespace game
         }
 
         const auto new_item =
-            m_loaded_meshes.emplace("sphere", LoadedMeshData{vertices(positions, normals, uvs), std::move(indices)});
+            m_loaded_meshes.emplace("sphere", LoadedMeshData{vertices(positions, normals, tangents, uvs), std::move(indices)});
         return {new_item.first->second.vertices, new_item.first->second.indices};
     }
 } // namespace game

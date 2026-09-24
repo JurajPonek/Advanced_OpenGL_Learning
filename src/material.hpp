@@ -26,6 +26,7 @@ namespace game
             void set_uniform(std::string_view name, const Matrix4& data) const;
             void set_uniform(std::string_view name, std::span<const Matrix4> data) const;
             void set_uniform(std::string_view name, int obj) const;
+            void set_uniform(std::string_view name, bool obj) const;
             void set_uniform(std::string_view name, float obj) const;
             void set_uniform(std::string_view name,const Vector3& obj) const;
             void bind_texture(std::uint32_t index, const Texture* texture, const Sampler* sampler) const;

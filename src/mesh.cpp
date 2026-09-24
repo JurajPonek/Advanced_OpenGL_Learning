@@ -34,14 +34,17 @@ namespace game
         ::glEnableVertexArrayAttrib(m_vao, 0);
         ::glEnableVertexArrayAttrib(m_vao, 1);
         ::glEnableVertexArrayAttrib(m_vao, 2);
+        ::glEnableVertexArrayAttrib(m_vao, 3);
 
         ::glVertexArrayAttribFormat(m_vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(VertexData, position));
         ::glVertexArrayAttribFormat(m_vao,  1, 3, GL_FLOAT, GL_FALSE, offsetof(VertexData, normal));
-        ::glVertexArrayAttribFormat(m_vao, 2, 2, GL_FLOAT, GL_FALSE, offsetof(VertexData, uv));
+        ::glVertexArrayAttribFormat(m_vao,  2, 3, GL_FLOAT, GL_FALSE, offsetof(VertexData, tangent));
+        ::glVertexArrayAttribFormat(m_vao, 3, 2, GL_FLOAT, GL_FALSE, offsetof(VertexData, uv));
 
         ::glVertexArrayAttribBinding(m_vao, 0, 0);
         ::glVertexArrayAttribBinding(m_vao, 1, 0);
         ::glVertexArrayAttribBinding(m_vao, 2, 0);
+        ::glVertexArrayAttribBinding(m_vao, 3, 0);
     }
     void Mesh::bind() const { ::glBindVertexArray(m_vao); }
     void Mesh::unbind() const { ::glBindVertexArray(0); }

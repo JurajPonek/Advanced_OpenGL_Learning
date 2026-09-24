@@ -122,6 +122,12 @@ namespace game
         ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
         ::glProgramUniform1i(m_handle, uniform->second, obj);
     }
+    void Material::set_uniform(std::string_view name, bool obj) const
+    {
+        const auto uniform = m_uniforms.find(name);
+        ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
+        ::glProgramUniform1i(m_handle, uniform->second, obj ? 1 : 0);
+    }
     void Material::set_uniform(std::string_view name, float obj) const
     {
         const auto uniform = m_uniforms.find(name);

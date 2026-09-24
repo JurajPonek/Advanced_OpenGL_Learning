@@ -61,6 +61,9 @@ namespace game
             Camera* m_camera;
             std::unique_ptr<Texture> m_default_texture;
             std::unique_ptr<Texture> m_plane_texture;
+            std::unique_ptr<Texture> m_brick_texture;
+            std::unique_ptr<Texture> m_brick_normal_map;
+            std::unique_ptr<Texture> m_default_normal_map_texture;
             std::unique_ptr<Sampler> m_sampler;
             std::unique_ptr<Sampler> m_shadow_map_sampler;
             std::unique_ptr<Mesh> m_cube;

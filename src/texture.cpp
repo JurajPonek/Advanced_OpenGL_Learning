@@ -96,6 +96,18 @@ namespace game
     Texture::Texture(const TextureSpecification& spec) : m_handle{0u, [](auto tex) { ::glDeleteTextures(1u, &tex); }}
     {
 
+        if (spec.default_normal_map_texture)
+        {
+            unsigned char flatBluePixel[4] = {128, 128, 255, 255};
+            ::glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
+            ::glTextureStorage2D(m_handle, 1, GL_RGBA8, 1, 1);
+            ::glTextureSubImage2D(m_handle, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, flatBluePixel);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            return;
+        }
         if (spec.type == TextureType::TEXTURE2D)
         {
             if (spec.samples == 1)

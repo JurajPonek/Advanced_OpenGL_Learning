@@ -25,6 +25,7 @@
 namespace
 {
     bool g_enable_msaa = true;
+    bool g_use_normal_map = true;
     float g_gamma = 2.2f;
     struct PointLightBuffer
     {
@@ -92,14 +93,28 @@ namespace game
             std::make_unique<Texture>(resource_loader.load_binary("container2.png"), TextureFormat::SRGBA);
         m_plane_texture =
             std::make_unique<Texture>(resource_loader.load_binary("wooden_floor.png"), TextureFormat::SRGBA);
+        m_brick_texture =
+            std::make_unique<Texture>(resource_loader.load_binary("brickwall.jpg"), TextureFormat::SRGBA);
+        m_brick_normal_map =
+            std::make_unique<Texture>(resource_loader.load_binary("brickwall_normal.jpg"), TextureFormat::SRGBA);
+
+        TextureSpecification default_normal_map_spec;
+        default_normal_map_spec.default_normal_map_texture = true;
+        default_normal_map_spec.type = TextureType::TEXTURE2D;
+        m_default_normal_map_texture = std::make_unique<Texture>(default_normal_map_spec);
+
         m_sampler = std::make_unique<Sampler>();
         m_shadow_map_sampler = std::make_unique<Sampler>(SamplerUsage::SHADOWMAP);
-        const Texture* textures1[]{m_default_texture.get()}; 
-        const Sampler* samplers1[]{m_sampler.get()};
-        const Texture* textures2[]{m_plane_texture.get()};
-        const Sampler* samplers2[]{m_sampler.get()};
-        const auto tex_samp1 = std::views::zip(textures1, samplers1) | std::ranges::to<std::vector>();
-        const auto tex_samp2 = std::views::zip(textures2, samplers2) | std::ranges::to<std::vector>();
+        const Texture* textures1[]{m_default_texture.get(), m_default_normal_map_texture.get()}; 
+        const Sampler* samplers[] = {m_sampler.get(), m_sampler.get()};
+        const Texture* textures2[]{m_plane_texture.get(), m_default_normal_map_texture.get()};
+        const Texture* textures3[]{m_brick_texture.get(), m_brick_normal_map.get()};
+        const Texture* textures4[]{m_brick_texture.get(), m_default_normal_map_texture.get()};
+
+        const auto tex_samp1 = std::views::zip(textures1, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp2 = std::views::zip(textures2, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp3 = std::views::zip(textures3, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp4 = std::views::zip(textures4, samplers) | std::ranges::to<std::vector>();
 
         const auto vertex_shader =
             Shader(resource_loader.load_string("shaders/advanced_lightning_vert.glsl"), game::ShaderType::VERTEX);
@@ -135,6 +150,9 @@ namespace game
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{0.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f},
                                 tex_samp2);
         m_entities.emplace_back(m_sphere.get(), m_material.get(), Vector3{5.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp1);
+        m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{20.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f}, 
+        tex_samp3);
+        m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{40.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f},tex_samp4);
     }
     void AdvancedLightningScene::on_render()
     {
@@ -211,6 +229,7 @@ namespace game
     void AdvancedLightningScene::on_imgui_render()
     {
         ::ImGui::Checkbox("MSAA", &g_enable_msaa);
+        ::ImGui::Checkbox("NORMAL_MAPS", &g_use_normal_map);
         ::ImGui::SliderFloat("Gamma", &g_gamma, 0.0f, 5.0f);
         ::ImGuiIO& io = ImGui::GetIO();
         ::ImGuizmo::SetOrthographic(false);
@@ -324,8 +343,8 @@ namespace game
     {
         m_material->use();
         m_material->set_uniform("light_space_matrix", lightSpaceMatrix);
-        m_material->bind_texture(1, &m_shadow_map->get_depth_attachment(), m_shadow_map_sampler.get());
-
+        m_material->set_uniform("use_normal_map", g_use_normal_map);
+        m_material->bind_texture(2, &m_shadow_map->get_depth_attachment(), m_shadow_map_sampler.get());
     }
     std::array<Matrix4, 6> AdvancedLightningScene::calculate_shadow_transformations(const PointLight& point) const
 {
@@ -344,7 +363,7 @@ namespace game
     {
         m_material->use();
         m_material->set_uniform("far_plane", 25.0f);
-        m_material->bind_depth_cubemap_array(2, &m_omnidirectional_shadow_map->get_depth_attachment(), m_sampler.get());
+        m_material->bind_depth_cubemap_array(3, &m_omnidirectional_shadow_map->get_depth_attachment(), m_sampler.get());
         
     }
 } // namespace game
