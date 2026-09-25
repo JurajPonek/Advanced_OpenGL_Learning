@@ -21,7 +21,8 @@ namespace game
         R32I,
         Depth24Stencil8,
         SRGBA,
-        Depth32F
+        Depth32F,
+        RGBA16F
     };
 
     struct TextureSpecification

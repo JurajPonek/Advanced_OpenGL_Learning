@@ -28,6 +28,8 @@ namespace
             return GL_DEPTH_COMPONENT32F;
         case SRGBA:
             return GL_SRGB8_ALPHA8;
+        case RGBA16F:
+            return GL_RGBA16F;
         default:
         return GL_NONE;
         }

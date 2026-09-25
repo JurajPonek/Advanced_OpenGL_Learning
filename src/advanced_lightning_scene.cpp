@@ -27,6 +27,7 @@ namespace
     bool g_enable_msaa = true;
     bool g_use_normal_map = true;
     bool g_use_height_map = true;
+    bool g_enable_hdr = true;
     float g_heigt_map_scale = 0.1;
     float g_gamma = 2.2f;
     struct PointLightBuffer
@@ -69,10 +70,11 @@ namespace game
         spec.height = window->get_height();
         spec.samples = 8;
         spec.type = TextureType::TEXTURE2D;
-        spec.attachments = {TextureFormat::RGBA8, TextureFormat::Depth32F};
+        spec.attachments = {TextureFormat::RGBA16F, TextureFormat::Depth32F};
         m_msaa_fbo = std::make_unique<FrameBuffer>(spec);
 
         spec.samples = 1;
+        spec.attachments = {TextureFormat::RGBA16F, TextureFormat::Depth32F};
         m_post_process_fbo = std::make_unique<FrameBuffer>(spec);
 
         spec.attachments = {TextureFormat::Depth32F};
@@ -254,11 +256,13 @@ namespace game
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ::glDisable(GL_DEPTH_TEST);
         m_post_process_material->set_uniform("gamma", g_gamma);
+        m_post_process_material->set_uniform("enable_hdr", g_enable_hdr);
         m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_post_process_fbo.get());
     }
     void AdvancedLightningScene::on_imgui_render()
     {
         ::ImGui::Checkbox("MSAA", &g_enable_msaa);
+        ::ImGui::Checkbox("HDR", &g_enable_hdr);
         ::ImGui::Checkbox("USE_NORMAL_MAPS", &g_use_normal_map);
         ::ImGui::Checkbox("USE_HEIGHT_MAPS", &g_use_height_map);
         ::ImGui::SliderFloat("Height_scale", &g_heigt_map_scale, 0.0f, 1.0f);

@@ -51,9 +51,29 @@ layout(std430, binding = 1) readonly buffer lights
 vec2 calculate_parallax_mapping(vec3 view_dir, vec2 texture_coords)
 {
     view_dir = normalize(view_dir);
-    float height = texture(tex2, texture_coords).r;
-    vec2 tex_offset = (view_dir.xy/max(view_dir.z, 0.01)) * (height * height_scale);
-    return texture_coords - tex_offset;
+    const float min_layers = 8.0;
+    const float max_layers = 32.0;
+    float num_of_layers = mix(max_layers, min_layers, max(dot(vec3(0.0, 0.0, 1.0), view_dir), 0.0));
+    float step_size = 1.0 / num_of_layers;
+    float current_layer_depth = 0.0;
+    vec2 p = view_dir.xy / view_dir.z * height_scale;
+    vec2 delta = p / num_of_layers;
+    vec2 current_tex_coords = texture_coords;
+    float current_depth_map_value = texture(tex2, current_tex_coords).r;
+
+    while(current_layer_depth < current_depth_map_value)
+    {
+        current_tex_coords -= delta;
+        current_depth_map_value = texture(tex2, current_tex_coords).r;
+        current_layer_depth += step_size;
+    }
+    vec2 prev_tex_coords = current_tex_coords + delta;
+    float after_depth = current_depth_map_value - current_layer_depth;
+    float before_depth = texture(tex2, prev_tex_coords).r - current_layer_depth + step_size;
+    float weight = after_depth / (after_depth - before_depth);
+    vec2 final_texture_coords = prev_tex_coords * weight + current_tex_coords * (1.0 - weight);
+    
+    return final_texture_coords;
 }
 
 
