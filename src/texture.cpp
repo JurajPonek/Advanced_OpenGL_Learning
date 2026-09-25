@@ -108,6 +108,14 @@ namespace game
             ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_REPEAT);
             return;
         }
+        if (spec.default_height_map_texture)
+        {
+            unsigned char height[1] = {0};
+            ::glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
+            ::glTextureStorage2D(m_handle, 1, GL_R8, 1, 1);
+            ::glTextureSubImage2D(m_handle, 0, 0, 0, 1, 1, GL_RED, GL_UNSIGNED_BYTE, height);
+            return;
+        }
         if (spec.type == TextureType::TEXTURE2D)
         {
             if (spec.samples == 1)

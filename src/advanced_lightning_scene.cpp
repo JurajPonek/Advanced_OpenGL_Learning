@@ -26,6 +26,8 @@ namespace
 {
     bool g_enable_msaa = true;
     bool g_use_normal_map = true;
+    bool g_use_height_map = true;
+    float g_heigt_map_scale = 0.1;
     float g_gamma = 2.2f;
     struct PointLightBuffer
     {
@@ -96,25 +98,45 @@ namespace game
         m_brick_texture =
             std::make_unique<Texture>(resource_loader.load_binary("brickwall.jpg"), TextureFormat::SRGBA);
         m_brick_normal_map =
-            std::make_unique<Texture>(resource_loader.load_binary("brickwall_normal.jpg"), TextureFormat::SRGBA);
+            std::make_unique<Texture>(resource_loader.load_binary("brickwall_normal.jpg"));
+        m_revolver_texture =
+            std::make_unique<Texture>(resource_loader.load_binary("lambert2_BC.png"), TextureFormat::SRGBA);
+        m_revolver_normal_map = std::make_unique<Texture>(
+            resource_loader.load_binary("lambert2_N-zonder-arti.png"));
+        m_brick2_texture  = std::make_unique<Texture>(resource_loader.load_binary("bricks2.jpg"), TextureFormat::SRGBA);
+        m_brick2_normal_map = std::make_unique<Texture>(resource_loader.load_binary("bricks2_normal.jpg"));
+        m_brick2_height_map = std::make_unique<Texture>(resource_loader.load_binary("bricks2_disp.jpg"));
 
-        TextureSpecification default_normal_map_spec;
-        default_normal_map_spec.default_normal_map_texture = true;
-        default_normal_map_spec.type = TextureType::TEXTURE2D;
-        m_default_normal_map_texture = std::make_unique<Texture>(default_normal_map_spec);
+        TextureSpecification default_map_spec;
+        default_map_spec.default_normal_map_texture = true;
+        default_map_spec.type = TextureType::TEXTURE2D;
+        m_default_normal_map_texture = std::make_unique<Texture>(default_map_spec);
+
+        default_map_spec.default_normal_map_texture = false;
+        default_map_spec.default_height_map_texture = true;
+        default_map_spec.type = TextureType::TEXTURE2D;
+        m_default_height_map_texture = std::make_unique<Texture>(default_map_spec);
 
         m_sampler = std::make_unique<Sampler>();
         m_shadow_map_sampler = std::make_unique<Sampler>(SamplerUsage::SHADOWMAP);
-        const Texture* textures1[]{m_default_texture.get(), m_default_normal_map_texture.get()}; 
-        const Sampler* samplers[] = {m_sampler.get(), m_sampler.get()};
-        const Texture* textures2[]{m_plane_texture.get(), m_default_normal_map_texture.get()};
-        const Texture* textures3[]{m_brick_texture.get(), m_brick_normal_map.get()};
-        const Texture* textures4[]{m_brick_texture.get(), m_default_normal_map_texture.get()};
+
+        const Sampler* samplers[] = {m_sampler.get(), m_sampler.get(), m_sampler.get()};
+        const Texture* textures1[]{m_default_texture.get(), m_default_normal_map_texture.get(), m_default_height_map_texture.get()};
+        const Texture* textures2[]{m_plane_texture.get(), m_default_normal_map_texture.get(),
+                                   m_default_height_map_texture.get()};
+        const Texture* textures3[]{m_brick_texture.get(), m_brick_normal_map.get(), m_default_height_map_texture.get()};
+        const Texture* textures4[]{m_brick_texture.get(), m_default_normal_map_texture.get(),
+                                   m_default_height_map_texture.get()};
+        const Texture* textures5[]{m_revolver_texture.get(), m_revolver_normal_map.get(),
+                                   m_default_height_map_texture.get()};
+        const Texture* textures6[]{m_brick2_texture.get(), m_brick2_normal_map.get(), m_brick2_height_map.get()};
 
         const auto tex_samp1 = std::views::zip(textures1, samplers) | std::ranges::to<std::vector>();
         const auto tex_samp2 = std::views::zip(textures2, samplers) | std::ranges::to<std::vector>();
         const auto tex_samp3 = std::views::zip(textures3, samplers) | std::ranges::to<std::vector>();
         const auto tex_samp4 = std::views::zip(textures4, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp5 = std::views::zip(textures5, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp6 = std::views::zip(textures6, samplers) | std::ranges::to<std::vector>();
 
         const auto vertex_shader =
             Shader(resource_loader.load_string("shaders/advanced_lightning_vert.glsl"), game::ShaderType::VERTEX);
@@ -146,6 +168,8 @@ namespace game
         m_cube = std::make_unique<Mesh>(m_mesh_loader->cube());
         m_plane = std::make_unique<Mesh>(m_mesh_loader->plane());
         m_sphere = std::make_unique<Mesh>(m_mesh_loader->sphere());
+        m_revolver = std::make_unique<Mesh>(m_mesh_loader->load("revolver.fbx"));
+
         m_entities.emplace_back(m_cube.get(), m_material.get(), Vector3{1.0f, 4.0f, 1.0f}, Vector3{1.0f}, tex_samp1);
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{0.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f},
                                 tex_samp2);
@@ -153,6 +177,10 @@ namespace game
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{20.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f}, 
         tex_samp3);
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{40.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f},tex_samp4);
+        m_entities.emplace_back(m_revolver.get(), m_material.get(), Vector3{0.0f, 0.0f, -2.0f},
+                                Vector3{.5f, .5f, .5f}, tex_samp5);
+        m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{0.0f, 0.0f, -20.0f},
+                                Vector3{10.0f, 1.0f, 10.0f}, tex_samp6, true);
     }
     void AdvancedLightningScene::on_render()
     {
@@ -206,9 +234,11 @@ namespace game
         m_renderer->set_camera(m_camera);
         setup_lights();
         setup_shadows(light_space_matrix);
+        setup_other_uniforms();
         setup_point_shadows();
         for (const auto& entity : m_entities)
         {
+            m_material->set_uniform("height_scale", entity.has_height_map() ? g_heigt_map_scale : 0.0f);
             m_renderer->draw_mesh(entity.get_mesh(), entity.get_material(), entity.get_model_matrix(),
                                   entity.get_textures());
         }
@@ -229,7 +259,9 @@ namespace game
     void AdvancedLightningScene::on_imgui_render()
     {
         ::ImGui::Checkbox("MSAA", &g_enable_msaa);
-        ::ImGui::Checkbox("NORMAL_MAPS", &g_use_normal_map);
+        ::ImGui::Checkbox("USE_NORMAL_MAPS", &g_use_normal_map);
+        ::ImGui::Checkbox("USE_HEIGHT_MAPS", &g_use_height_map);
+        ::ImGui::SliderFloat("Height_scale", &g_heigt_map_scale, 0.0f, 1.0f);
         ::ImGui::SliderFloat("Gamma", &g_gamma, 0.0f, 5.0f);
         ::ImGuiIO& io = ImGui::GetIO();
         ::ImGuizmo::SetOrthographic(false);
@@ -343,8 +375,7 @@ namespace game
     {
         m_material->use();
         m_material->set_uniform("light_space_matrix", lightSpaceMatrix);
-        m_material->set_uniform("use_normal_map", g_use_normal_map);
-        m_material->bind_texture(2, &m_shadow_map->get_depth_attachment(), m_shadow_map_sampler.get());
+        m_material->bind_texture(3, &m_shadow_map->get_depth_attachment(), m_shadow_map_sampler.get());
     }
     std::array<Matrix4, 6> AdvancedLightningScene::calculate_shadow_transformations(const PointLight& point) const
 {
@@ -363,7 +394,13 @@ namespace game
     {
         m_material->use();
         m_material->set_uniform("far_plane", 25.0f);
-        m_material->bind_depth_cubemap_array(3, &m_omnidirectional_shadow_map->get_depth_attachment(), m_sampler.get());
+        m_material->bind_depth_cubemap_array(4, &m_omnidirectional_shadow_map->get_depth_attachment(), m_sampler.get());
         
+    }
+
+    void AdvancedLightningScene::setup_other_uniforms() const
+    {
+        m_material->set_uniform("use_normal_map", g_use_normal_map);
+        m_material->set_uniform("use_height_map", g_use_height_map);
     }
 } // namespace game

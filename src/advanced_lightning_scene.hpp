@@ -55,6 +55,7 @@ namespace game
             void setup_shadows(const Matrix4& lightSpaceMatrix);
             void setup_point_shadows() const;
             std::array<Matrix4, 6> calculate_shadow_transformations(const PointLight& point) const;
+            void setup_other_uniforms() const;
 
           private:
             std::vector<Entity> m_entities;
@@ -63,12 +64,19 @@ namespace game
             std::unique_ptr<Texture> m_plane_texture;
             std::unique_ptr<Texture> m_brick_texture;
             std::unique_ptr<Texture> m_brick_normal_map;
+            std::unique_ptr<Texture> m_revolver_texture;
+            std::unique_ptr<Texture> m_revolver_normal_map;
             std::unique_ptr<Texture> m_default_normal_map_texture;
+            std::unique_ptr<Texture> m_default_height_map_texture;
+            std::unique_ptr<Texture> m_brick2_texture;
+            std::unique_ptr<Texture> m_brick2_normal_map;
+            std::unique_ptr<Texture> m_brick2_height_map;
             std::unique_ptr<Sampler> m_sampler;
             std::unique_ptr<Sampler> m_shadow_map_sampler;
             std::unique_ptr<Mesh> m_cube;
             std::unique_ptr<Mesh> m_plane;
             std::unique_ptr<Mesh> m_sphere;
+            std::unique_ptr<Mesh> m_revolver;
             std::unique_ptr<Material> m_material;
             std::unique_ptr<Material> m_post_process_material;
             std::unique_ptr<Material> m_shadow_map_material;

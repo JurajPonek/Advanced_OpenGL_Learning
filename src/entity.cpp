@@ -8,8 +8,8 @@
 
 namespace game
 {
-    Entity::Entity(const Mesh* mesh, const Material* material, const Vector3& position,const Vector3& scale, const std::vector<std::tuple<const Texture*, const Sampler*>>& textures)
-    :   m_model{position, scale}, m_mesh(mesh), m_material(material), m_textures{textures} 
+    Entity::Entity(const Mesh* mesh, const Material* material, const Vector3& position,const Vector3& scale, const std::vector<std::tuple<const Texture*, const Sampler*>>& textures, bool has_height_map)
+    :   m_model{position, scale}, m_mesh(mesh), m_material(material), m_textures{textures}, m_has_height_map{has_height_map}
     {
 
     }
@@ -31,6 +31,11 @@ namespace game
     std::span<const std::tuple<const Texture*, const Sampler*>> Entity::get_textures() const
     {
         return m_textures;
+    }
+    
+    const bool Entity::has_height_map() const
+    {
+        return m_has_height_map;
     }
 
 

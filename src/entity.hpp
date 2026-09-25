@@ -18,18 +18,20 @@ namespace game
     {
       public:
         Entity(const Mesh* mesh, const Material* material, const Vector3& position, const Vector3& scale,
-               const std::vector<std::tuple<const Texture*, const Sampler*>>& textures);
+               const std::vector<std::tuple<const Texture*, const Sampler*>>& textures, bool has_height_map = false);
 
         const Matrix4& get_model_matrix() const;
         const Mesh* get_mesh() const;
         const Material* get_material() const;
         std::span<const std::tuple<const Texture*, const Sampler*>> get_textures() const;
+        const bool has_height_map() const;
 
       private:
         Matrix4 m_model;
         const Mesh* m_mesh;
         const Material* m_material;
         std::vector<std::tuple<const Texture*, const Sampler*>> m_textures;
+        bool m_has_height_map;
     };
 
 } // namespace game

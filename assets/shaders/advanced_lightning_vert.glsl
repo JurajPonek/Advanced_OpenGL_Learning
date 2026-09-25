@@ -17,6 +17,7 @@ out vec2 o_texture_coords;
 out vec4 frag_pos;
 out vec4 frag_pos_light_space;
 out mat3 TBN;
+out vec3 view_dir_tbn;
 
 void main()
 {
@@ -30,4 +31,5 @@ void main()
     T = normalize(T - dot(N, T) * N);
     vec3 B = cross(N, T);
     TBN = mat3(T, B, N);
+    view_dir_tbn = transpose(TBN) * normalize(camera_position - frag_pos.xyz);
 };

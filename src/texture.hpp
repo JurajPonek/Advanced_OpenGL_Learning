@@ -32,6 +32,7 @@ namespace game
         TextureFormat format;
         bool generate_mipmaps = false;
         bool default_normal_map_texture = false;
+        bool default_height_map_texture = false;
         std::uint32_t max_lights = 0;
         std::uint32_t samples = 1;
     };

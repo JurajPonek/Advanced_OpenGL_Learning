@@ -6,14 +6,19 @@ in vec3 o_normal;
 in vec4 frag_pos;
 in vec4 frag_pos_light_space;
 in mat3 TBN;
+in vec3 view_dir_tbn;
 
 uniform sampler2D tex0;
 uniform sampler2D tex1;
-uniform sampler2DShadow tex2;
-uniform samplerCubeArray tex3;
+uniform sampler2D tex2;
+uniform sampler2DShadow tex3;
+uniform samplerCubeArray tex4;
 
 uniform float far_plane;
 uniform bool use_normal_map;
+uniform bool use_height_map;
+uniform float height_scale;
+
 
 
 layout(std140, binding = 0) uniform camera
@@ -43,6 +48,15 @@ layout(std430, binding = 1) readonly buffer lights
 };
 
 
+vec2 calculate_parallax_mapping(vec3 view_dir, vec2 texture_coords)
+{
+    view_dir = normalize(view_dir);
+    float height = texture(tex2, texture_coords).r;
+    vec2 tex_offset = (view_dir.xy/max(view_dir.z, 0.01)) * (height * height_scale);
+    return texture_coords - tex_offset;
+}
+
+
 float calculate_point_shadow(int index)
 {
     vec3 light_pos = points[index].point_pos; 
@@ -68,7 +82,7 @@ float calculate_point_shadow(int index)
         return 0.0;
     for (int i = 0; i < samples; ++i)
     {
-        float closest_depth = texture(tex3, vec4(frag_to_light + sample_offset_directions[i] * disk_radius, float(shadow_map_idx))).r; // [0,1]
+        float closest_depth = texture(tex4, vec4(frag_to_light + sample_offset_directions[i] * disk_radius, float(shadow_map_idx))).r; // [0,1]
         //texturu vzorkujeme pomocou 4D vektora vec4(smer.xyz, cislo_vrstvy)
         shadow += (current_depth - bias) > closest_depth ? 1.0 : 0.0;
     }
@@ -87,14 +101,14 @@ float calculate_directional_shadow(vec4 fragPosLightSpace)
     float bias = max(0.05 * (1.0 - dot(normalize(o_normal), -direction)), 0.005); // -direction lebo chceme dopadajuci luc
     
     float currentDepth = frag_coord.z;
-    vec2 texel_size = 1.0 / textureSize(tex2, 0);
+    vec2 texel_size = 1.0 / textureSize(tex3, 0);
     float shadow = 0.0;
     for (int x = -2; x <= 2; ++x)
     {
         for(int y = -2; y <= 2; ++y)
         {
             vec2 offset = vec2(x,y) * texel_size;
-            shadow += texture(tex2, vec3(frag_coord.xy + offset, currentDepth - bias)); // pouzivame sampler2DShadow cize hardwerovo axcelerovane samplovanie 
+            shadow += texture(tex3, vec3(frag_coord.xy + offset, currentDepth - bias)); // pouzivame sampler2DShadow cize hardwerovo axcelerovane samplovanie 
             //funkcia texture() sama vykoná porovnanie a hardvérovo spriemeruje 4 susedné body zadarmo
             //funkcia texture() berie vec3 
             //.xy = UV súradnice v mape.
@@ -157,17 +171,31 @@ vec3 calculate_point(int index, vec3 normal)
 
 void main()
 {
+    vec2 tex_coords = vec2(0.0);
+    if (use_height_map && height_scale > 0.00001)
+    {
+        tex_coords = calculate_parallax_mapping(view_dir_tbn, o_texture_coords);
+        if (tex_coords.x > 1.0 || tex_coords.y > 1.0 || tex_coords.x < 0.0 || tex_coords.y < 0.0)
+        {
+            discard;
+        }
+    }
+    else
+    {
+        tex_coords = o_texture_coords;
+    }
+    
     vec3 normal = vec3(0.0);
     if (use_normal_map)
     {
-        normal = texture(tex1, o_texture_coords).rgb * 2.0 - 1.0;
+        normal = texture(tex1, tex_coords).rgb * 2.0 - 1.0;
         normal = normalize(TBN * normal);
     }
     else
     {
         normal = normalize(o_normal);
     }
-    vec4 albedo = texture(tex0, o_texture_coords);
+    vec4 albedo = texture(tex0, tex_coords);
     vec3 ambient = calculate_ambient();
     vec3 direction = calculate_direction(normal);
     vec3 point = vec3(0.0);
