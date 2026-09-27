@@ -24,6 +24,7 @@ add_executable(game main.cpp
                     cubemap.cpp
                     instancing_scene.cpp
                     advanced_lightning_scene.cpp
+                    deferred_rendering_scene.cpp
                     
 )
 target_include_directories(game PUBLIC ${PROJECT_SOURCE_DIR})

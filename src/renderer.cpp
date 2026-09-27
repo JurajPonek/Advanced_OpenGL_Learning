@@ -26,10 +26,10 @@ namespace game
 {
     Renderer::Renderer(MeshLoader& mesh_loader, ResourceLoader& resource_loader)
         : m_camera_buffer{sizeof(Matrix4) * 2 + sizeof(Vector3)},
-          m_post_process_vao{0u, [](auto vao) { ::glDeleteVertexArrays(1, &vao); }}, m_skybox(mesh_loader.cube()),
+          m_fullscreen_vao{0u, [](auto vao) { ::glDeleteVertexArrays(1, &vao); }}, m_skybox(mesh_loader.cube()),
           m_skybox_material{setup_skybox_material(resource_loader)}
     {
-        ::glGenVertexArrays(1, &m_post_process_vao);
+        ::glGenVertexArrays(1, &m_fullscreen_vao);
     }
     void Renderer::set_camera(const Camera* camera)
     {
@@ -50,6 +50,17 @@ namespace game
                          reinterpret_cast<void*>(mesh->get_index_offset()));
         mesh->unbind();
     }
+
+    void Renderer::draw_mesh(const Mesh* mesh, const Material* material, const Matrix4& transform) const
+    {
+        material->use();
+        material->set_uniform("model", transform);
+        mesh->bind();
+        ::glDrawElements(GL_TRIANGLES, mesh->get_index_count(), GL_UNSIGNED_INT,
+                         reinterpret_cast<void*>(mesh->get_index_offset()));
+        mesh->unbind();
+    }
+
     void Renderer::draw_to_depth_buffer(const Mesh* mesh, const Material* material, const Matrix4& transform, const Matrix4& light_space_matrix) const
     {
         material->use();
@@ -66,10 +77,15 @@ namespace game
     {
         material->use();
         material->bind_texture(0, &fbo->get_color_attachment(), sampler);
-        ::glBindVertexArray(m_post_process_vao);
+        draw_fullscreen_quad();
+    }
+    void Renderer::draw_fullscreen_quad() const
+    {
+        ::glBindVertexArray(m_fullscreen_vao);
         ::glDrawArrays(GL_TRIANGLES, 0, 3);
         ::glBindVertexArray(0);
     }
+
     Material Renderer::setup_skybox_material(ResourceLoader& resource_loader) const
     {
         const auto vertex_shader =

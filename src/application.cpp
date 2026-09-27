@@ -1,6 +1,7 @@
 #include "application.hpp"
 #include "camera.hpp"
 #include "clear_color_scene.hpp"
+#include "deferred_rendering_scene.hpp"
 #include "exception.hpp"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
@@ -79,10 +80,12 @@ namespace game
                                                &mesh_loader);
             manager.add_scene<AdvancedLightningScene>("AdvancedLightningScene", resource_loader, &m_window, &camera,
                                                       &renderer, &mesh_loader);
+            manager.add_scene<DeferredRenderingScene>("DeferredRenderingScene", resource_loader, &m_window, &camera,
+                                                      &renderer, &mesh_loader);
             manager.set_startup_scene(
                 [&]()
                 {
-                    return std::make_unique<AdvancedLightningScene>(resource_loader, &m_window, &camera, &renderer,
+                    return std::make_unique<DeferredRenderingScene>(resource_loader, &m_window, &camera, &renderer,
                                                                     &mesh_loader);
                 });
 
