@@ -2,9 +2,11 @@
 layout (location = 0) in vec2 inUV;
 layout (location = 0) out vec4 fragColor;
 
+
 layout (binding = 0) uniform sampler2D tex0;
 uniform float gamma;
 uniform bool enable_hdr;
+
 
 vec3 reinhard(vec3 hdrColor) 
 {

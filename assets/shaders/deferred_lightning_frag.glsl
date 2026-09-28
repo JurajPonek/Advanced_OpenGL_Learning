@@ -82,9 +82,11 @@ float calculate_directional_shadow(vec4 fragPosLightSpace, vec3 normal)
 {
     vec3 proj_coords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     vec3 frag_coord = proj_coords * 0.5 + 0.5;
-    if (frag_coord.z > 1.0)
+    if (frag_coord.z > 1.0 || 
+        frag_coord.x < 0.0 || frag_coord.x > 1.0 || 
+        frag_coord.y < 0.0 || frag_coord.y > 1.0)
     {
-        return 0.0;
+        return 0.0; 
     }
     float bias = max(0.05 * (1.0 - dot(normalize(normal), -direction)), 0.005); // -direction lebo chceme dopadajuci luc
     

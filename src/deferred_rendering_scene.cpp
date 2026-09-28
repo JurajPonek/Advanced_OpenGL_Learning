@@ -1,6 +1,7 @@
-#include "buffer_writer.hpp"
 #include "deferred_rendering_scene.hpp"
+#include "buffer_writer.hpp"
 #include "color.hpp"
+#include "error.hpp"
 #include "framebuffer.hpp"
 #include "imgui.h"
 #include "matrix4.hpp"
@@ -22,12 +23,13 @@
 #include <vector>
 
 
+
 namespace
 {
     bool g_use_normal_map = true;
     bool g_use_height_map = true;
     bool g_enable_hdr = true;
-    float g_heigt_map_scale = 0.1;
+    float g_height_map_scale = 0.1;
     float g_gamma = 2.2f;
     struct PointLightBuffer
     {
@@ -54,7 +56,8 @@ namespace game
 {
     static constexpr std::uint32_t SHADOW_MAP_WIDTH = 2048;
     static constexpr std::uint32_t SHADOW_MAP_HEIGHT = 2048;
-    static constexpr int MAX_POINT_LIGHTS = 6;
+    static constexpr int MAX_POINT_LIGHTS = 100;
+    static constexpr int MAX_POINT_LIGHTS_CASTING_SHADOWS = 3;
     DeferredRenderingScene::DeferredRenderingScene(ResourceLoader& resource_loader, Window* window, Camera* camera,
                                                    Renderer* renderer, MeshLoader* mesh_loader)
         : m_entities{}, m_camera{camera}, m_renderer{renderer}, m_mesh_loader{mesh_loader}, m_points{},
@@ -70,8 +73,7 @@ namespace game
         spec.attachments = {TextureFormat::RGBA16F, TextureFormat::RGBA8, TextureFormat::Depth32F};
         m_g_buffer = std::make_unique<FrameBuffer>(spec);
 
-        spec.attachments = {TextureFormat::RGBA16F,
-                            TextureFormat::Depth32F};
+        spec.attachments = {TextureFormat::RGBA16F,  TextureFormat::Depth32F};
         m_post_process_fbo = std::make_unique<FrameBuffer>(spec);
 
         spec.attachments = {TextureFormat::Depth32F};
@@ -80,7 +82,7 @@ namespace game
         m_shadow_map = std::make_unique<FrameBuffer>(spec);
 
         spec.attachments = {TextureFormat::Depth32F};
-        spec.max_lights = MAX_POINT_LIGHTS;
+        spec.max_lights = MAX_POINT_LIGHTS_CASTING_SHADOWS;
         spec.type = TextureType::DEPTHCUBEMAP;
         m_omnidirectional_shadow_map = std::make_unique<FrameBuffer>(spec);
         m_shadow_proj =
@@ -182,7 +184,7 @@ namespace game
         Matrix4 light_space_matrix = calculate_light_space_matrix();
         execute_shadow_pass(light_space_matrix);
         execute_g_pass();
-        execute_lightning_pass(light_space_matrix);
+        execute_lighting_pass(light_space_matrix);
         execute_post_process_pass();
     }
     void DeferredRenderingScene::on_imgui_render()
@@ -190,7 +192,7 @@ namespace game
         ::ImGui::Checkbox("HDR", &g_enable_hdr);
         ::ImGui::Checkbox("USE_NORMAL_MAPS", &g_use_normal_map);
         ::ImGui::Checkbox("USE_HEIGHT_MAPS", &g_use_height_map);
-        ::ImGui::SliderFloat("Height_scale", &g_heigt_map_scale, 0.0f, 1.0f);
+        ::ImGui::SliderFloat("Height_scale", &g_height_map_scale, 0.0f, 1.0f);
         ::ImGui::SliderFloat("Gamma", &g_gamma, 0.0f, 5.0f);
         ::ImGuiIO& io = ImGui::GetIO();
         ::ImGuizmo::SetOrthographic(false);
@@ -201,38 +203,23 @@ namespace game
         if (ImGui::Button("Add light"))
         {
             const auto& last = m_points.back();
+            ensure(m_points.size() < MAX_POINT_LIGHTS, "Reached point lights limit");
+            int point_shadow_index = MAX_POINT_LIGHTS_CASTING_SHADOWS <= m_points.size() ? -1 : m_points.size(); 
             m_points.emplace_back(PointLight{last.position, last.color, last.shininess, last.radius, last.intensity,
-                                             static_cast<int>(m_points.size())});
+                                             point_shadow_index});
             selected_point = m_points.size() - 1u;
         }
         if (::ImGui::CollapsingHeader("ambient"))
         {
-            float colors[3]{};
-            std::memcpy(colors, &m_ambient, sizeof(colors));
-            if (::ImGui::ColorPicker3("ambient color", colors))
-            {
-                std::memcpy(&m_ambient, colors, sizeof(colors));
-            }
+            ::ImGui::ColorPicker3("ambient color", &m_ambient.r);
         }
         if (::ImGui::CollapsingHeader("directional"))
         {
-            float colors[3]{};
-            float dir[3]{};
-            std::memcpy(colors, &m_directional.color, sizeof(colors));
-            std::memcpy(dir, &m_directional.direction, sizeof(dir));
-            if (::ImGui::SliderFloat3("Direction", dir, -10.0f, 10.0f))
-            {
-                std::memcpy(&m_directional.direction, dir, sizeof(dir));
-            };
-            if (::ImGui::ColorPicker3("directional color", colors))
-            {
-                std::memcpy(&m_directional.color, colors, sizeof(colors));
-            }
+            ::ImGui::SliderFloat3("Direction", &m_directional.direction.x, -10.0f, 10.0f);
+            ::ImGui::ColorPicker3("directional color", &m_directional.color.r);
         }
-        for (const auto& [index, point] : m_points | std::views::enumerate)
+        for (const auto&& [index, point] : m_points | std::views::enumerate)
         {
-            float colors[3]{};
-            std::memcpy(colors, &point.color, sizeof(colors));
             const auto header_name = std::format("pointlight {}", index);
             const auto picker_name = std::format("color {}", index);
             const auto shininess_name = std::format("shininess {}", index);
@@ -240,11 +227,8 @@ namespace game
             const auto intensity_name = std::format("intensity {}", index);
             if (::ImGui::CollapsingHeader(header_name.c_str()))
             {
-                if (::ImGui::ColorPicker3(picker_name.c_str(), colors))
+                if (::ImGui::ColorEdit3(picker_name.c_str(), &point.color.r))
                 {
-                    point.color.r = colors[0];
-                    point.color.g = colors[1];
-                    point.color.b = colors[2];
                     selected_point = index;
                 }
 
@@ -262,15 +246,27 @@ namespace game
         point.position.x = translate.data()[12];
         point.position.y = translate.data()[13];
         point.position.z = translate.data()[14];
-        ImGui::Begin("Framebuffer Preview");
-
+        ImGui::Begin("Shadow map");
         ::GLuint texture_id = m_shadow_map->get_depth_attachment().get_native_handle();
-
         ImVec2 image_size = ImVec2(320.0f, 180.0f);
         ImTextureID imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
-
         ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-
+        ImGui::End();
+        ImGui::Begin("Normals");
+        texture_id = m_g_buffer->get_color_attachment(0).get_native_handle();
+        imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
+        ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        ImGui::End();
+        ImGui::Begin("Albedo");
+        texture_id = m_g_buffer->get_color_attachment(1).get_native_handle();
+        imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
+        ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        ImGui::End();
+        ImGui::Begin("Depth");
+        texture_id = m_g_buffer->get_depth_attachment().get_native_handle();
+        imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
+        ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        
         // ImGui::Text("FBO size: %dx%d", m_fbo->get_width(), m_fbo->get_height());
 
 
@@ -341,17 +337,17 @@ namespace game
         setup_other_uniforms();
         for (const auto& entity : m_entities)
         {
-            m_g_buffer_material->set_uniform("height_scale", entity.has_height_map() ? g_heigt_map_scale : 0.0f);
+            m_g_buffer_material->set_uniform("height_scale", entity.has_height_map() ? g_height_map_scale : 0.0f);
             m_renderer->draw_mesh(entity.get_mesh(), m_g_buffer_material.get(), entity.get_model_matrix(),
                                   entity.get_textures());
         }
         m_g_buffer->unbind();
     }
-    void DeferredRenderingScene::execute_lightning_pass(const Matrix4& light_space_matrix) const
+    void DeferredRenderingScene::execute_lighting_pass(const Matrix4& light_space_matrix) const
     {
         m_post_process_fbo->bind();
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        ::glEnable(GL_DEPTH_TEST);
+        ::glDisable(GL_DEPTH_TEST);
         m_renderer->set_camera(m_camera);
         setup_lights();
         setup_shadows(light_space_matrix);
@@ -419,7 +415,7 @@ namespace game
     {
         m_material->bind_texture(0, &m_g_buffer->get_color_attachment(0), m_sampler.get());
         m_material->bind_texture(1, &m_g_buffer->get_color_attachment(1), m_sampler.get());
-        m_material->bind_texture(2, &m_g_buffer->get_depth_attachment(),m_sampler.get());
+        m_material->bind_texture(2, &m_g_buffer->get_depth_attachment(), m_sampler.get());
     }
 
 

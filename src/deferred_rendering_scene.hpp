@@ -58,11 +58,11 @@ namespace game
         void setup_other_uniforms() const;
         void execute_g_pass() const;
         void execute_shadow_pass(const Matrix4& light_space_matrix) const;
-        void execute_lightning_pass(const Matrix4& light_space_matrix) const;
+        void execute_lighting_pass(const Matrix4& light_space_matrix) const;
         void execute_post_process_pass() const;
         Matrix4 calculate_light_space_matrix() const;
         void setup_textures_from_g_buffer() const;
-        
+
       private:
         std::vector<Entity> m_entities;
         Camera* m_camera;

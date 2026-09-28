@@ -1,5 +1,5 @@
 #version 460 core
-layout (location = 0) out vec3 g_normal;
+layout (location = 0) out vec4 g_normal;
 layout (location = 1) out vec4 g_albedo;
 
 
@@ -25,7 +25,7 @@ vec2 calculate_parallax_mapping(vec3 view_dir, vec2 texture_coords)
     float num_of_layers = mix(max_layers, min_layers, max(dot(vec3(0.0, 0.0, 1.0), view_dir), 0.0));
     float step_size = 1.0 / num_of_layers;
     float current_layer_depth = 0.0;
-    vec2 p = view_dir.xy / view_dir.z * height_scale;
+    vec2 p = view_dir.xy / max(view_dir.z, 0.00001) * height_scale;
     vec2 delta = p / num_of_layers;
     vec2 current_tex_coords = texture_coords;
     float current_depth_map_value = texture(tex2, current_tex_coords).r;
@@ -73,6 +73,6 @@ void main()
         normal = normalize(o_normal);
     }
 
-    g_normal = normal;
+    g_normal = vec4(normal, 1.0f);
     g_albedo = vec4(texture(tex0, tex_coords).rgb, 1.0f);
 }
