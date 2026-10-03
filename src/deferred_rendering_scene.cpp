@@ -4,6 +4,7 @@
 #include "error.hpp"
 #include "framebuffer.hpp"
 #include "imgui.h"
+#include "material.hpp"
 #include "matrix4.hpp"
 #include "opengl.hpp"
 #include "sampler.hpp"
@@ -11,6 +12,7 @@
 #include "vector3.hpp"
 #include "vendor/opengl/glext.h"
 #include <ImGuizmo.h>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -18,6 +20,7 @@
 #include <gl/gl.h>
 #include <memory>
 #include <numbers>
+#include <random>
 #include <ranges>
 #include <span>
 #include <vector>
@@ -29,6 +32,7 @@ namespace
     bool g_use_normal_map = true;
     bool g_use_height_map = true;
     bool g_enable_hdr = true;
+    bool g_enable_ssao = true;
     float g_height_map_scale = 0.1;
     float g_gamma = 2.2f;
     struct PointLightBuffer
@@ -40,6 +44,10 @@ namespace
         float intensity{};
         int shadow_map_index;
     };
+    float lerp(float a, float b, float t)
+    {
+        return a + (b - a) * t;
+    }
 
     struct LightBuffer
     {
@@ -58,6 +66,7 @@ namespace game
     static constexpr std::uint32_t SHADOW_MAP_HEIGHT = 2048;
     static constexpr int MAX_POINT_LIGHTS = 100;
     static constexpr int MAX_POINT_LIGHTS_CASTING_SHADOWS = 3;
+    static constexpr int SSAO_NOISE_SIZE = 16;
     DeferredRenderingScene::DeferredRenderingScene(ResourceLoader& resource_loader, Window* window, Camera* camera,
                                                    Renderer* renderer, MeshLoader* mesh_loader)
         : m_entities{}, m_camera{camera}, m_renderer{renderer}, m_mesh_loader{mesh_loader}, m_points{},
@@ -73,8 +82,16 @@ namespace game
         spec.attachments = {TextureFormat::RGBA16F, TextureFormat::RGBA8, TextureFormat::Depth32F};
         m_g_buffer = std::make_unique<FrameBuffer>(spec);
 
-        spec.attachments = {TextureFormat::RGBA16F,  TextureFormat::Depth32F};
+        spec.attachments = {TextureFormat::RED};
+        m_ssao_fbo = std::make_unique<FrameBuffer>(spec);
+
+        m_ssao_blur_fbo = std::make_unique<FrameBuffer>(spec);
+
+        spec.attachments = {TextureFormat::RGBA16F, TextureFormat::Depth32F};
         m_post_process_fbo = std::make_unique<FrameBuffer>(spec);
+
+        spec.attachments = {TextureFormat::RGBA8};
+        m_debug_fbo = std::make_unique<FrameBuffer>(spec);
 
         spec.attachments = {TextureFormat::Depth32F};
         spec.width = SHADOW_MAP_WIDTH;
@@ -85,6 +102,7 @@ namespace game
         spec.max_lights = MAX_POINT_LIGHTS_CASTING_SHADOWS;
         spec.type = TextureType::DEPTHCUBEMAP;
         m_omnidirectional_shadow_map = std::make_unique<FrameBuffer>(spec);
+
         m_shadow_proj =
             Matrix4::perspective(std::numbers::pi_v<float> / 2.0f, m_omnidirectional_shadow_map->get_width(),
                                  m_omnidirectional_shadow_map->get_height(), 1.0f, 25.0f);
@@ -158,38 +176,83 @@ namespace game
         const auto g_pass_frag =
             Shader(resource_loader.load_string("shaders/g_pass_frag.glsl"), game::ShaderType::FRAGMENT);
 
+        const auto full_screen_quad_vert =
+            Shader(resource_loader.load_string("shaders/full_screen_quad_vert.glsl"), game::ShaderType::VERTEX);
+        const auto ssao_frag =
+            Shader(resource_loader.load_string("shaders/ssao_frag.glsl"), game::ShaderType::FRAGMENT);
+
+        const auto ssao_blur_frag =
+            Shader(resource_loader.load_string("shaders/ssao_blur_frag.glsl"), game::ShaderType::FRAGMENT);
+
+        const auto debug_view_frag =
+            Shader(resource_loader.load_string("shaders/debug_view_frag.glsl"), game::ShaderType::FRAGMENT);
+
         m_material = std::make_unique<Material>(vertex_shader, fragment_shader);
         m_post_process_material = std::make_unique<Material>(post_process_vert, post_process_frag);
         m_shadow_map_material = std::make_unique<Material>(shadow_map_vert, shadow_map_frag);
         m_point_shadows_material =
             std::make_unique<Material>(point_shadows_vert, point_shadows_geo, point_shadows_frag);
         m_g_buffer_material = std::make_unique<Material>(g_pass_vert, g_pass_frag);
+        m_ssao_material = std::make_unique<Material>(full_screen_quad_vert, ssao_frag);
+        m_ssao_blur_material = std::make_unique<Material>(full_screen_quad_vert, ssao_blur_frag);
+        m_debug_view_material = std::make_unique<Material>(full_screen_quad_vert, debug_view_frag);
+
         m_cube = std::make_unique<Mesh>(m_mesh_loader->cube());
         m_plane = std::make_unique<Mesh>(m_mesh_loader->plane());
         m_sphere = std::make_unique<Mesh>(m_mesh_loader->sphere());
 
-        m_entities.emplace_back(m_cube.get(), m_material.get(), Vector3{1.0f, 4.0f, 1.0f}, Vector3{1.0f}, tex_samp1);
+        m_entities.emplace_back(m_cube.get(), m_material.get(), Vector3{1.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp1);
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{0.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f},
                                 tex_samp2);
         m_entities.emplace_back(m_sphere.get(), m_material.get(), Vector3{5.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp1);
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{20.0f, 0.0f, 0.0f},
                                 Vector3{10.0f, 1.0f, 10.0f}, tex_samp3);
+        
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{40.0f, 0.0f, 0.0f},
                                 Vector3{10.0f, 1.0f, 10.0f}, tex_samp4);
         m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{0.0f, 0.0f, -20.0f},
                                 Vector3{10.0f, 1.0f, 10.0f}, tex_samp6, true);
+
+        std::random_device rd{};
+        std::mt19937 gen{rd()};
+        std::uniform_real_distribution dist(-1.0f, 1.0f);
+        m_ssao_kernel.resize(SSAO_KERNEL_SIZE);
+        for (auto i{0}; i < SSAO_KERNEL_SIZE; ++i)
+        {
+            Vector3 random_sample = Vector3::normalize({dist(gen), dist(gen), (dist(gen) + 1.0f) / 2.0f});
+            random_sample *= ((dist(gen) + 1.0f) / 2.0f);
+            float scale = float(i) / float(SSAO_KERNEL_SIZE);
+            scale = lerp(0.1f, 1.0f, scale * scale);
+            random_sample *= scale;
+            m_ssao_kernel[i] = random_sample;
+        }
+        std::vector<Vector3> ssao_noise{};
+        ssao_noise.resize(SSAO_NOISE_SIZE);
+        for (auto i{0}; i < SSAO_NOISE_SIZE; ++i)
+        {
+            ssao_noise[i] = Vector3::normalize({dist(gen), dist(gen), 0.0f});
+        }
+        TextureSpecification ssao_noise_texture_spec;
+        ssao_noise_texture_spec.width = 4;
+        ssao_noise_texture_spec.height = 4;
+        ssao_noise_texture_spec.format = TextureFormat::RGBA16F;
+        ssao_noise_texture_spec.texture_wrapping = TextureWrappingMode::REPEAT;
+        ssao_noise_texture_spec.filter_mode = TextureFilterMode::NEAREST;
+        m_ssao_noise_texture = std::make_unique<Texture>(ssao_noise, ssao_noise_texture_spec);
     }
     void DeferredRenderingScene::on_render()
     {
         Matrix4 light_space_matrix = calculate_light_space_matrix();
         execute_shadow_pass(light_space_matrix);
         execute_g_pass();
+        execute_ssao_pass();
         execute_lighting_pass(light_space_matrix);
         execute_post_process_pass();
     }
     void DeferredRenderingScene::on_imgui_render()
     {
         ::ImGui::Checkbox("HDR", &g_enable_hdr);
+        ::ImGui::Checkbox("SSAO", &g_enable_ssao);
         ::ImGui::Checkbox("USE_NORMAL_MAPS", &g_use_normal_map);
         ::ImGui::Checkbox("USE_HEIGHT_MAPS", &g_use_height_map);
         ::ImGui::SliderFloat("Height_scale", &g_height_map_scale, 0.0f, 1.0f);
@@ -262,11 +325,12 @@ namespace game
         imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
         ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
         ImGui::End();
-        ImGui::Begin("Depth");
-        texture_id = m_g_buffer->get_depth_attachment().get_native_handle();
+        debug_draw(m_ssao_fbo->get_color_attachment());
+        ImGui::Begin("AO");
+        texture_id = m_debug_fbo->get_color_attachment().get_native_handle();
         imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
         ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-        
+
         // ImGui::Text("FBO size: %dx%d", m_fbo->get_width(), m_fbo->get_height());
 
 
@@ -353,6 +417,11 @@ namespace game
         setup_shadows(light_space_matrix);
         setup_point_shadows();
         setup_textures_from_g_buffer();
+        m_material->bind_texture(5, &m_ssao_blur_fbo->get_color_attachment(), m_sampler.get());
+        m_material->set_uniform("ssao", g_enable_ssao);
+        Matrix4 view_proj_inverse =
+        Matrix4::inverse(m_camera->get_view_as_matrix()) * Matrix4::inverse(m_camera->get_projection_as_matrix());
+        m_material->set_uniform("inv_view_proj",  view_proj_inverse);
         m_renderer->draw_fullscreen_quad();
         m_post_process_fbo->unbind();
     }
@@ -416,6 +485,37 @@ namespace game
         m_material->bind_texture(0, &m_g_buffer->get_color_attachment(0), m_sampler.get());
         m_material->bind_texture(1, &m_g_buffer->get_color_attachment(1), m_sampler.get());
         m_material->bind_texture(2, &m_g_buffer->get_depth_attachment(), m_sampler.get());
+    }
+    void DeferredRenderingScene::execute_ssao_pass() const
+    {
+        m_ssao_fbo->bind();
+        ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        ::glDisable(GL_DEPTH_TEST);
+        m_renderer->set_camera(m_camera);
+        m_ssao_material->use();
+        m_ssao_material->bind_texture(0, &m_g_buffer->get_color_attachment(0), m_sampler.get());
+        m_ssao_material->bind_texture(1, &m_g_buffer->get_depth_attachment(), m_sampler.get());
+        m_ssao_material->bind_texture(2, m_ssao_noise_texture.get(), m_sampler.get());
+        m_ssao_material->set_uniform("samples[0]", m_ssao_kernel);
+        Matrix4 inv_proj = Matrix4::inverse(m_camera->get_projection_as_matrix());
+        m_ssao_material->set_uniform("inverse_proj", inv_proj);
+        m_renderer->draw_fullscreen_quad();
+        m_ssao_fbo->unbind();
+
+        m_ssao_blur_fbo->bind();
+        m_ssao_blur_material->use();
+        m_ssao_blur_material->bind_texture(0, &m_ssao_fbo->get_color_attachment(), m_sampler.get());
+        m_renderer->draw_fullscreen_quad();
+        m_ssao_blur_fbo->unbind();
+    }
+
+    void DeferredRenderingScene::debug_draw(const Texture& attachment) const
+    {
+        m_debug_fbo->bind();
+        m_debug_view_material->use();
+        m_debug_view_material->bind_texture(0, &attachment, m_sampler.get());
+        m_renderer->draw_fullscreen_quad();
+        m_debug_fbo->unbind();
     }
 
 

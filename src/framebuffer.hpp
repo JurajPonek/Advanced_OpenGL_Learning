@@ -19,6 +19,8 @@ namespace game
         std::uint32_t samples = 1;
         std::uint32_t max_lights = 1;
         TextureType type;
+        TextureFilterMode filter_mode = TextureFilterMode::LINEAR;
+        TextureWrappingMode wrapping_mode = TextureWrappingMode::CLAMP_TO_EDGE;
         std::vector<TextureFormat> attachments;
     };
     class FrameBuffer

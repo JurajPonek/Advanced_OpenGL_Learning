@@ -9,11 +9,13 @@
 #include "texture.hpp"
 #include "vector3.hpp"
 #include "vendor/opengl/glext.h"
+#include <array>
 #include <cstdint>
 #include <gl/gl.h>
 #include <ranges>
 #include <span>
 #include <string>
+#include <vector>
 namespace game
 {
 
@@ -140,6 +142,13 @@ namespace game
         ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
         ::glProgramUniform3f(m_handle, uniform->second, obj.x, obj.y, obj.z);
     }
+    void Material::set_uniform(std::string_view name, const std::vector<Vector3>& obj) const
+    {
+        const auto uniform = m_uniforms.find(name);
+        ensure(uniform != std::ranges::cend(m_uniforms), "missing uniform {}", name);
+        ::glProgramUniform3fv(m_handle, uniform->second, obj.size(), &obj[0].x);
+    }
+
     void Material::bind_texture(std::uint32_t index, const Texture* texture, const Sampler* sampler) const
     {
         ::glBindTextureUnit(index, texture->get_native_handle());

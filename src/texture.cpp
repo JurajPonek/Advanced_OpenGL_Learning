@@ -1,11 +1,13 @@
 #include "texture.hpp"
 #include "error.hpp"
 #include "opengl.hpp"
+#include "vector3.hpp"
 #include "vendor/opengl/glext.h"
 #include <cstddef>
 #include <cstdint>
 #include <gl/gl.h>
 #include <memory>
+#include <vector>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -30,8 +32,37 @@ namespace
             return GL_SRGB8_ALPHA8;
         case RGBA16F:
             return GL_RGBA16F;
+        case RED:
+            return GL_R8;
         default:
         return GL_NONE;
+        }
+    }
+
+    GLenum to_gl_internal_wrapping_mode(const game::TextureWrappingMode mode)
+    {
+        switch (mode) 
+        {
+            using enum game::TextureWrappingMode;
+            case CLAMP_TO_EDGE:
+                return GL_CLAMP_TO_EDGE;
+            case REPEAT:
+                return GL_REPEAT;
+            default:
+                return GL_CLAMP_TO_EDGE;
+        }
+    }
+    GLenum to_gl_internal_filter_mode(const game::TextureFilterMode mode)
+    {
+        switch (mode)
+        {
+            using enum game::TextureFilterMode;
+        case NEAREST:
+            return GL_NEAREST;
+        case LINEAR:
+            return GL_LINEAR;
+        default:
+            return GL_LINEAR;
         }
     }
     bool is_depth_format(game::TextureFormat format)
@@ -124,11 +155,21 @@ namespace game
             {
                 ::glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
                 ::glTextureStorage2D(m_handle, 1, to_gl_internal_format(spec.format), spec.width, spec.height);
-                GLenum filter = is_depth_format(spec.format) ? GL_NEAREST : GL_LINEAR;
+                GLenum filter{};
+                if (is_depth_format(spec.format))
+                {
+                    filter = GL_NEAREST;
+                }
+                else 
+                {
+                    filter = to_gl_internal_filter_mode(spec.filter_mode);
+                }
+
+                GLenum wrapping_mode = to_gl_internal_wrapping_mode(spec.texture_wrapping);
                 ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, filter);
                 ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, filter);
-                ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, wrapping_mode);
+                ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, wrapping_mode);
             }
             else 
             {
@@ -147,6 +188,13 @@ namespace game
             ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         }
+    }
+    Texture::Texture(const std::vector<Vector3>& data, const TextureSpecification& spec)
+        : m_handle{0u, [](auto texture) { ::glDeleteTextures(1u, &texture); }}
+    {
+        ::glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
+        ::glTextureStorage2D(m_handle, 1, to_gl_internal_format(spec.format), spec.width, spec.height);
+        ::glTextureSubImage2D(m_handle, 0, 0, 0, spec.width, spec.height, GL_RGB, GL_FLOAT, data.data());
     }
     ::GLuint Texture::get_native_handle() const { return m_handle; }
 } // namespace game

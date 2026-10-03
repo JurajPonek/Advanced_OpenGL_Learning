@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <span>
+#include "src/error.hpp"
 #include "src/vector3.hpp"
 #include "vector3.hpp"
 
@@ -135,6 +136,53 @@ namespace game
                 tmp.m_data[10] = scale.z;
                 return tmp;
             }
+
+            inline static constexpr Matrix4 inverse(const Matrix4& mat)
+            {
+                float s0 = (mat.m_data[0] * mat.m_data[5]) - (mat.m_data[1] * mat.m_data[4]);
+                float s1 = (mat.m_data[0] * mat.m_data[6]) - (mat.m_data[2] * mat.m_data[4]);
+                float s2 = (mat.m_data[0] * mat.m_data[7]) - (mat.m_data[3] * mat.m_data[4]);
+                float s3 = (mat.m_data[1] * mat.m_data[6]) - (mat.m_data[2] * mat.m_data[5]);
+                float s4 = (mat.m_data[1] * mat.m_data[7]) - (mat.m_data[3] * mat.m_data[5]);
+                float s5 = (mat.m_data[2] * mat.m_data[7]) - (mat.m_data[3] * mat.m_data[6]);
+
+                float c5 = (mat.m_data[10] * mat.m_data[15]) - (mat.m_data[11] * mat.m_data[14]);
+                float c4 = (mat.m_data[9] * mat.m_data[15]) - (mat.m_data[11] * mat.m_data[13]);
+                float c3 = (mat.m_data[9] * mat.m_data[14]) - (mat.m_data[10] * mat.m_data[13]);
+                float c2 = (mat.m_data[8] * mat.m_data[15]) - (mat.m_data[11] * mat.m_data[12]);
+                float c1 = (mat.m_data[8] * mat.m_data[14]) - (mat.m_data[10] * mat.m_data[12]);
+                float c0 = (mat.m_data[8] * mat.m_data[13]) - (mat.m_data[9] * mat.m_data[12]);
+
+                float det = (s0 * c5) - (s1 * c4) + (s2 * c3) + (s3 * c2) - (s4 * c1) + (s5 * c0);
+
+                ensure((det > 0.000001f || det < -0.000001f), "Cannot compute inverse matrix, determinant is 0");
+
+                float inv_det = 1.0f / det;
+                Matrix4 res{};
+
+                res.m_data[0] = (mat.m_data[5] * c5 - mat.m_data[6] * c4 + mat.m_data[7] * c3) * inv_det;
+                res.m_data[1] = (-mat.m_data[1] * c5 + mat.m_data[2] * c4 - mat.m_data[3] * c3) * inv_det;
+                res.m_data[2] = (mat.m_data[13] * s5 - mat.m_data[14] * s4 + mat.m_data[15] * s3) * inv_det;
+                res.m_data[3] = (-mat.m_data[9] * s5 + mat.m_data[10] * s4 - mat.m_data[11] * s3) * inv_det;
+
+                res.m_data[4] = (-mat.m_data[4] * c5 + mat.m_data[6] * c2 - mat.m_data[7] * c1) * inv_det;
+                res.m_data[5] = (mat.m_data[0] * c5 - mat.m_data[2] * c2 + mat.m_data[3] * c1) * inv_det;
+                res.m_data[6] = (-mat.m_data[12] * s5 + mat.m_data[14] * s2 - mat.m_data[15] * s1) * inv_det;
+                res.m_data[7] = (mat.m_data[8] * s5 - mat.m_data[10] * s2 + mat.m_data[11] * s1) * inv_det;
+
+                res.m_data[8] = (mat.m_data[4] * c4 - mat.m_data[5] * c2 + mat.m_data[7] * c0) * inv_det;
+                res.m_data[9] = (-mat.m_data[0] * c4 + mat.m_data[1] * c2 - mat.m_data[3] * c0) * inv_det;
+                res.m_data[10] = (mat.m_data[12] * s4 - mat.m_data[13] * s2 + mat.m_data[15] * s0) * inv_det;
+                res.m_data[11] = (-mat.m_data[8] * s4 + mat.m_data[9] * s2 - mat.m_data[11] * s0) * inv_det;
+
+                res.m_data[12] = (-mat.m_data[4] * c3 + mat.m_data[5] * c1 - mat.m_data[6] * c0) * inv_det;
+                res.m_data[13] = (mat.m_data[0] * c3 - mat.m_data[1] * c1 + mat.m_data[2] * c0) * inv_det;
+                res.m_data[14] = (-mat.m_data[12] * s3 + mat.m_data[13] * s1 - mat.m_data[14] * s0) * inv_det;
+                res.m_data[15] = (mat.m_data[8] * s3 - mat.m_data[9] * s1 + mat.m_data[10] * s0) * inv_det;
+
+                return res;
+            }
+
 
           private:
             std::array<float, 16> m_data;

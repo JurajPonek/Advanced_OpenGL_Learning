@@ -109,6 +109,7 @@
     DO(PFNGLTEXIMAGE2DMULTISAMPLEPROC, glTexImage2DMultisample)                                                        \
     DO(PFNGLTEXTURESTORAGE2DMULTISAMPLEPROC, glTextureStorage2DMultisample)                                            \
     DO(PFNGLTEXTUREPARAMETERFVPROC, glTextureParameterfv)                                                              \
+    DO(PFNGLPROGRAMUNIFORM3FVPROC, glProgramUniform3fv)                                                                \
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;
 FOR_OPENGL_FUNCTIONS(DO_DEFINE)

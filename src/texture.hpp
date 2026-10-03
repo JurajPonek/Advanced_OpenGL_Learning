@@ -2,6 +2,7 @@
 
 #include "auto_release.hpp"
 #include "opengl.hpp"
+#include "vector3.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -22,9 +23,20 @@ namespace game
         Depth24Stencil8,
         SRGBA,
         Depth32F,
-        RGBA16F
+        RGBA16F,
+        RED
     };
 
+    enum class TextureWrappingMode
+    {
+        CLAMP_TO_EDGE,
+        REPEAT
+    };
+    enum class TextureFilterMode
+    {
+        NEAREST,
+        LINEAR
+    };
     struct TextureSpecification
     {
         uint32_t width = 0;
@@ -36,6 +48,8 @@ namespace game
         bool default_height_map_texture = false;
         std::uint32_t max_lights = 0;
         std::uint32_t samples = 1;
+        TextureWrappingMode texture_wrapping = TextureWrappingMode::CLAMP_TO_EDGE;
+        TextureFilterMode filter_mode = TextureFilterMode::LINEAR;
     };
 
     class Texture
@@ -44,8 +58,8 @@ namespace game
         Texture(std::span<const std::byte> data);
         Texture(std::span<const std::byte> data, TextureFormat format);
         Texture(std::span<const std::byte> data, std::uint32_t width, std::uint32_t height);
+        Texture(const std::vector<Vector3>& data, const TextureSpecification& spec);
         Texture(const TextureSpecification& spec);
-      
 
 
         ::GLuint get_native_handle() const;

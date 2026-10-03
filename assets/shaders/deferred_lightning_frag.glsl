@@ -8,10 +8,13 @@ uniform sampler2D tex1;
 uniform sampler2D tex2;
 uniform sampler2DShadow tex3;
 uniform samplerCubeArray tex4;
+uniform sampler2D tex5;
 
 uniform float far_plane;
 uniform mat4 light_space_matrix;
-//uniform mat4 inv_view_proj; // treba poslat z cpu
+uniform bool ssao;
+uniform mat4 inv_view_proj;
+
 
 
 
@@ -161,10 +164,14 @@ vec3 calculate_point(int index, vec3 normal, vec4 frag_pos)
 
 void main()
 {
+    float AO = 1.0;
+    if (ssao)
+    {
+        AO = texture(tex5, o_texture_coords).r;
+    }
     vec3 normal = normalize(texture(tex0, o_texture_coords).rgb);
     vec4 albedo = texture(tex1, o_texture_coords);
     float depth = texture(tex2, o_texture_coords).r;
-    mat4 inv_view_proj = inverse(view) * inverse(projection);
     vec4 sreen_space_coords = vec4(o_texture_coords * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     vec4 frag_pos = inv_view_proj * sreen_space_coords;
     frag_pos /= frag_pos.w;
@@ -173,7 +180,7 @@ void main()
     {
         discard;
     }
-    vec3 ambient = calculate_ambient();
+    vec3 ambient = calculate_ambient() * AO;
     vec3 direction = calculate_direction(normal);
     vec3 point = vec3(0.0);
     for (int i = 0; i < num_of_points; ++i)

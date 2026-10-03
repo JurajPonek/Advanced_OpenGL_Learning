@@ -32,6 +32,14 @@ namespace game
 
     std::span<const float> Camera::get_view() const { return m_view.data(); }
     std::span<const float> Camera::get_projection() const { return m_projection.data(); }
+    const Matrix4& Camera::get_view_as_matrix() const
+    {
+        return m_view; 
+    }
+    const Matrix4& Camera::get_projection_as_matrix() const
+    {
+        return m_projection;
+    }
 
     void Camera::translate(const Vector3& translation)
     {

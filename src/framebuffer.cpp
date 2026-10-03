@@ -32,6 +32,8 @@ namespace game
             texture_spec.samples = m_specification.samples;
             texture_spec.format = attachment_format;
             texture_spec.max_lights = m_specification.max_lights;
+            texture_spec.texture_wrapping = m_specification.wrapping_mode;
+            texture_spec.filter_mode = m_specification.filter_mode;
             if (is_depth_format(attachment_format))
             {
                 m_depth_attachment.emplace(texture_spec);

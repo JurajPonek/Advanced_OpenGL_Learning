@@ -14,6 +14,8 @@ namespace game
 
             std::span<const float> get_view() const;
             std::span<const float> get_projection() const;
+            const Matrix4& get_view_as_matrix() const;
+            const Matrix4& get_projection_as_matrix() const;
             void translate(const Vector3& translation);
             Vector3 get_direction() const;
             Vector3 get_right() const;

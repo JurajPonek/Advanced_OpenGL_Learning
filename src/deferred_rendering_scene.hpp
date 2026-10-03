@@ -17,6 +17,9 @@
 #include "texture.hpp"
 #include "vector3.hpp"
 #include "window.hpp"
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <gl/gl.h>
 #include <memory>
 #include <vector>
@@ -27,6 +30,7 @@ namespace game
 
     class DeferredRenderingScene : public Scene
     {
+      static constexpr int SSAO_KERNEL_SIZE = 64;
         struct PointLight
         {
             Vector3 position;
@@ -60,8 +64,10 @@ namespace game
         void execute_shadow_pass(const Matrix4& light_space_matrix) const;
         void execute_lighting_pass(const Matrix4& light_space_matrix) const;
         void execute_post_process_pass() const;
+        void execute_ssao_pass() const;
         Matrix4 calculate_light_space_matrix() const;
         void setup_textures_from_g_buffer() const;
+        void debug_draw(const Texture& attachment) const;
 
       private:
         std::vector<Entity> m_entities;
@@ -75,6 +81,7 @@ namespace game
         std::unique_ptr<Texture> m_brick2_texture;
         std::unique_ptr<Texture> m_brick2_normal_map;
         std::unique_ptr<Texture> m_brick2_height_map;
+        std::unique_ptr<Texture> m_ssao_noise_texture;
         std::unique_ptr<Sampler> m_sampler;
         std::unique_ptr<Sampler> m_shadow_map_sampler;
         std::unique_ptr<Mesh> m_cube;
@@ -85,16 +92,23 @@ namespace game
         std::unique_ptr<Material> m_shadow_map_material;
         std::unique_ptr<Material> m_point_shadows_material;
         std::unique_ptr<Material> m_g_buffer_material;
+        std::unique_ptr<Material> m_ssao_material;
+        std::unique_ptr<Material> m_ssao_blur_material;
+        std::unique_ptr<Material> m_debug_view_material;
         Renderer* m_renderer;
         std::unique_ptr<FrameBuffer> m_post_process_fbo;
         std::unique_ptr<FrameBuffer> m_shadow_map;
         std::unique_ptr<FrameBuffer> m_omnidirectional_shadow_map;
         std::unique_ptr<FrameBuffer> m_g_buffer;
+        std::unique_ptr<FrameBuffer> m_ssao_fbo;
+        std::unique_ptr<FrameBuffer> m_ssao_blur_fbo;
+        std::unique_ptr<FrameBuffer> m_debug_fbo;
         MeshLoader* m_mesh_loader;
         std::vector<PointLight> m_points;
         Buffer m_light_buffer;
         DirectionalLight m_directional;
         Color m_ambient;
         Matrix4 m_shadow_proj;
+        std::vector<Vector3> m_ssao_kernel;
     };
 } // namespace game
