@@ -1,4 +1,4 @@
-#include "deferred_rendering_scene.hpp"
+#include "PBR_scene.hpp"
 #include "buffer_writer.hpp"
 #include "color.hpp"
 #include "error.hpp"
@@ -26,29 +26,27 @@
 #include <vector>
 
 
-
 namespace
 {
-    bool g_use_normal_map = true;
     bool g_use_height_map = true;
     bool g_enable_hdr = true;
     bool g_enable_ssao = true;
-    float g_height_map_scale = 0.1;
+    float g_height_map_scale = 0.015;
     float g_ssao_power = 1;
     float g_gamma = 2.2f;
+    game::Vector3 g_pbr_test_albedo = {1.0f, 0.0f, 0.0f};
+    float g_pbr_test_roughness = 0.0f;
+    float g_pbr_test_metallic = 0.0f;
+    float g_pbr_test_ao = 0.0f;
     struct PointLightBuffer
     {
         alignas(16) game::Vector3 position{};
         alignas(16) game::Color color{};
-        int shininess{};
         float radius{};
         float intensity{};
         int shadow_map_index;
     };
-    float lerp(float a, float b, float t)
-    {
-        return a + (b - a) * t;
-    }
+    float lerp(float a, float b, float t) { return a + (b - a) * t; }
 
     struct LightBuffer
     {
@@ -68,8 +66,8 @@ namespace game
     static constexpr int MAX_POINT_LIGHTS = 100;
     static constexpr int MAX_POINT_LIGHTS_CASTING_SHADOWS = 3;
     static constexpr int SSAO_NOISE_SIZE = 16;
-    DeferredRenderingScene::DeferredRenderingScene(ResourceLoader& resource_loader, Window* window, Camera* camera,
-                                                   Renderer* renderer, MeshLoader* mesh_loader)
+    PBRScene::PBRScene(ResourceLoader& resource_loader, Window* window, Camera* camera, Renderer* renderer,
+                       MeshLoader* mesh_loader)
         : m_entities{}, m_camera{camera}, m_renderer{renderer}, m_mesh_loader{mesh_loader}, m_points{},
           m_light_buffer{10240u}, m_directional{{0.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}}, m_ambient{0.3f, 0.3f, 0.3f}
     {
@@ -80,7 +78,7 @@ namespace game
         spec.height = window->get_height();
         spec.type = TextureType::TEXTURE2D;
         spec.samples = 1;
-        spec.attachments = {TextureFormat::RGBA16F, TextureFormat::RGBA8, TextureFormat::Depth32F};
+        spec.attachments = {TextureFormat::RGBA8, TextureFormat::RGBA16F, TextureFormat::RGBA8, TextureFormat::Depth32F};
         m_g_buffer = std::make_unique<FrameBuffer>(spec);
 
         spec.attachments = {TextureFormat::RED};
@@ -109,17 +107,23 @@ namespace game
                                  m_omnidirectional_shadow_map->get_height(), 1.0f, 25.0f);
 
         m_points.emplace_back(
-            PointLight{{0.0f, 5.0f, 1.0f}, {0.5f, 0.5f, 0.5f}, 64, 25.0f, 30.0f, static_cast<int>(m_points.size())});
+            PointLight{{0.0f, 5.0f, 1.0f}, {0.5f, 0.5f, 0.5f}, 25.0f, 30.0f, static_cast<int>(m_points.size())});
 
-        m_default_texture =
-            std::make_unique<Texture>(resource_loader.load_binary("container2.png"), TextureFormat::SRGBA);
-        m_plane_texture =
-            std::make_unique<Texture>(resource_loader.load_binary("wooden_floor.png"), TextureFormat::SRGBA);
-        m_brick_texture = std::make_unique<Texture>(resource_loader.load_binary("brickwall.jpg"), TextureFormat::SRGBA);
-        m_brick_normal_map = std::make_unique<Texture>(resource_loader.load_binary("brickwall_normal.jpg"));
-        m_brick2_texture = std::make_unique<Texture>(resource_loader.load_binary("bricks2.jpg"), TextureFormat::SRGBA);
-        m_brick2_normal_map = std::make_unique<Texture>(resource_loader.load_binary("bricks2_normal.jpg"));
-        m_brick2_height_map = std::make_unique<Texture>(resource_loader.load_binary("bricks2_disp.jpg"));
+
+
+
+        m_sampler = std::make_unique<Sampler>();
+        m_shadow_map_sampler = std::make_unique<Sampler>(SamplerUsage::SHADOWMAP);
+
+        m_sphere_albedo = std::make_unique<Texture>(
+            resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_albedo.png"), TextureFormat::SRGBA);
+        m_sphere_normal = std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_normal-ogl.png"));
+        m_sphere_metallic = std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_metallic.png"));
+        m_sphere_roughness = std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_roughness.png"));
+        m_sphere_height = std::make_unique<Texture>(
+            resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_height.png"));
+        m_sphere_ao =
+            std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_ao.png"));
 
         TextureSpecification default_map_spec;
         default_map_spec.default_normal_map_texture = true;
@@ -131,29 +135,19 @@ namespace game
         default_map_spec.type = TextureType::TEXTURE2D;
         m_default_height_map_texture = std::make_unique<Texture>(default_map_spec);
 
-        m_sampler = std::make_unique<Sampler>();
-        m_shadow_map_sampler = std::make_unique<Sampler>(SamplerUsage::SHADOWMAP);
 
-        const Sampler* samplers[] = {m_sampler.get(), m_sampler.get(), m_sampler.get()};
-        const Texture* textures1[]{m_default_texture.get(), m_default_normal_map_texture.get(),
-                                   m_default_height_map_texture.get()};
-        const Texture* textures2[]{m_plane_texture.get(), m_default_normal_map_texture.get(),
-                                   m_default_height_map_texture.get()};
-        const Texture* textures3[]{m_brick_texture.get(), m_brick_normal_map.get(), m_default_height_map_texture.get()};
-        const Texture* textures4[]{m_brick_texture.get(), m_default_normal_map_texture.get(),
-                                   m_default_height_map_texture.get()};
-        const Texture* textures6[]{m_brick2_texture.get(), m_brick2_normal_map.get(), m_brick2_height_map.get()};
+        const Sampler* samplers[] = {m_sampler.get(), m_sampler.get(), m_sampler.get(), m_sampler.get(), m_sampler.get(), m_sampler.get()};
+        const Texture* textures[] = {m_sphere_albedo.get(), m_sphere_normal.get(), m_sphere_height.get(), m_sphere_ao.get(), m_sphere_metallic.get(), m_sphere_roughness.get()};
+        const Texture* textures1[] = { m_default_normal_map_texture.get(),   m_default_height_map_texture.get(),
+                                     };
 
-        const auto tex_samp1 = std::views::zip(textures1, samplers) | std::ranges::to<std::vector>();
-        const auto tex_samp2 = std::views::zip(textures2, samplers) | std::ranges::to<std::vector>();
-        const auto tex_samp3 = std::views::zip(textures3, samplers) | std::ranges::to<std::vector>();
-        const auto tex_samp4 = std::views::zip(textures4, samplers) | std::ranges::to<std::vector>();
-        const auto tex_samp6 = std::views::zip(textures6, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp1 = std::views::zip(textures, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp2 = std::views::zip(textures1, samplers) | std::ranges::to<std::vector>();
 
         const auto vertex_shader =
-            Shader(resource_loader.load_string("shaders/deferred_lightning_vert.glsl"), game::ShaderType::VERTEX);
+            Shader(resource_loader.load_string("shaders/PBR_vert.glsl"), game::ShaderType::VERTEX);
         const auto fragment_shader =
-            Shader(resource_loader.load_string("shaders/deferred_lightning_frag.glsl"), game::ShaderType::FRAGMENT);
+            Shader(resource_loader.load_string("shaders/PBR_frag.glsl"), game::ShaderType::FRAGMENT);
 
         const auto shadow_map_vert =
             Shader(resource_loader.load_string("shaders/shadow_map_vert.glsl"), game::ShaderType::VERTEX);
@@ -173,9 +167,9 @@ namespace game
             Shader(resource_loader.load_string("shaders/point_shadows_frag.glsl"), game::ShaderType::FRAGMENT);
 
         const auto g_pass_vert =
-            Shader(resource_loader.load_string("shaders/g_pass_vert.glsl"), game::ShaderType::VERTEX);
+            Shader(resource_loader.load_string("shaders/PBR_g_pass_vert.glsl"), game::ShaderType::VERTEX);
         const auto g_pass_frag =
-            Shader(resource_loader.load_string("shaders/g_pass_frag.glsl"), game::ShaderType::FRAGMENT);
+            Shader(resource_loader.load_string("shaders/PBR_g_pass_frag.glsl"), game::ShaderType::FRAGMENT);
 
         const auto full_screen_quad_vert =
             Shader(resource_loader.load_string("shaders/full_screen_quad_vert.glsl"), game::ShaderType::VERTEX);
@@ -187,6 +181,9 @@ namespace game
 
         const auto debug_view_frag =
             Shader(resource_loader.load_string("shaders/debug_view_frag.glsl"), game::ShaderType::FRAGMENT);
+        const auto pbr_test_frag =
+            Shader(resource_loader.load_string("shaders/PBR_test_frag.glsl"), game::ShaderType::FRAGMENT);
+
 
         m_material = std::make_unique<Material>(vertex_shader, fragment_shader);
         m_post_process_material = std::make_unique<Material>(post_process_vert, post_process_frag);
@@ -197,22 +194,13 @@ namespace game
         m_ssao_material = std::make_unique<Material>(full_screen_quad_vert, ssao_frag);
         m_ssao_blur_material = std::make_unique<Material>(full_screen_quad_vert, ssao_blur_frag);
         m_debug_view_material = std::make_unique<Material>(full_screen_quad_vert, debug_view_frag);
+        m_pbr_test_material = std::make_unique<Material>(g_pass_vert, pbr_test_frag);
 
-        m_cube = std::make_unique<Mesh>(m_mesh_loader->cube());
-        m_plane = std::make_unique<Mesh>(m_mesh_loader->plane());
         m_sphere = std::make_unique<Mesh>(m_mesh_loader->sphere());
 
-        m_entities.emplace_back(m_cube.get(), m_material.get(), Vector3{1.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp1);
-        m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{0.0f, 0.0f, 0.0f}, Vector3{10.0f, 1.0f, 10.0f},
-                                tex_samp2);
-        m_entities.emplace_back(m_sphere.get(), m_material.get(), Vector3{5.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp1);
-        m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{20.0f, 0.0f, 0.0f},
-                                Vector3{10.0f, 1.0f, 10.0f}, tex_samp3);
-        
-        m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{40.0f, 0.0f, 0.0f},
-                                Vector3{10.0f, 1.0f, 10.0f}, tex_samp4);
-        m_entities.emplace_back(m_plane.get(), m_material.get(), Vector3{0.0f, 0.0f, -20.0f},
-                                Vector3{10.0f, 1.0f, 10.0f}, tex_samp6, true);
+        m_entities.emplace_back(m_sphere.get(), m_g_buffer_material.get(), Vector3{5.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp1, true);
+        m_entities.emplace_back(m_sphere.get(), m_pbr_test_material.get(), Vector3{1.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp2);
+
 
         std::random_device rd{};
         std::mt19937 gen{rd()};
@@ -241,7 +229,7 @@ namespace game
         ssao_noise_texture_spec.filter_mode = TextureFilterMode::NEAREST;
         m_ssao_noise_texture = std::make_unique<Texture>(ssao_noise, ssao_noise_texture_spec);
     }
-    void DeferredRenderingScene::on_render()
+    void PBRScene::on_render()
     {
         Matrix4 light_space_matrix = calculate_light_space_matrix();
         execute_shadow_pass(light_space_matrix);
@@ -250,11 +238,10 @@ namespace game
         execute_lighting_pass(light_space_matrix);
         execute_post_process_pass();
     }
-    void DeferredRenderingScene::on_imgui_render()
+    void PBRScene::on_imgui_render()
     {
         ::ImGui::Checkbox("HDR", &g_enable_hdr);
         ::ImGui::Checkbox("SSAO", &g_enable_ssao);
-        ::ImGui::Checkbox("USE_NORMAL_MAPS", &g_use_normal_map);
         ::ImGui::Checkbox("USE_HEIGHT_MAPS", &g_use_height_map);
         ::ImGui::SliderFloat("Height_scale", &g_height_map_scale, 0.0f, 1.0f);
         ::ImGui::SliderFloat("Gamma", &g_gamma, 0.0f, 5.0f);
@@ -269,10 +256,17 @@ namespace game
         {
             const auto& last = m_points.back();
             ensure(m_points.size() < MAX_POINT_LIGHTS, "Reached point lights limit");
-            int point_shadow_index = MAX_POINT_LIGHTS_CASTING_SHADOWS <= m_points.size() ? -1 : m_points.size(); 
-            m_points.emplace_back(PointLight{last.position, last.color, last.shininess, last.radius, last.intensity,
-                                             point_shadow_index});
+            int point_shadow_index = MAX_POINT_LIGHTS_CASTING_SHADOWS <= m_points.size() ? -1 : m_points.size();
+            m_points.emplace_back(
+                PointLight{last.position, last.color, last.radius, last.intensity, point_shadow_index});
             selected_point = m_points.size() - 1u;
+        }
+        if (::ImGui::CollapsingHeader("PBR Test"))
+        {
+            ::ImGui::ColorPicker3("alebedo", &g_pbr_test_albedo.x);
+            ::ImGui::SliderFloat("roughness", &g_pbr_test_roughness, 0.0f, 1.0f);
+            ::ImGui::SliderFloat("metallic", &g_pbr_test_metallic, 0.0f, 1.0f);
+            ::ImGui::SliderFloat("AO", &g_pbr_test_ao, 0.0f, 1.0f);
         }
         if (::ImGui::CollapsingHeader("ambient"))
         {
@@ -296,8 +290,6 @@ namespace game
                 {
                     selected_point = index;
                 }
-
-                ::ImGui::SliderInt(shininess_name.c_str(), &point.shininess, 0, 128);
                 ::ImGui::SliderFloat(radius_name.c_str(), &point.radius, 0.0f, 100.0f);
                 ::ImGui::SliderFloat(intensity_name.c_str(), &point.intensity, 0.0f, 100.0f);
             }
@@ -318,12 +310,12 @@ namespace game
         ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
         ImGui::End();
         ImGui::Begin("Normals");
-        texture_id = m_g_buffer->get_color_attachment(0).get_native_handle();
+        texture_id = m_g_buffer->get_color_attachment(1).get_native_handle();
         imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
         ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
         ImGui::End();
         ImGui::Begin("Albedo");
-        texture_id = m_g_buffer->get_color_attachment(1).get_native_handle();
+        texture_id = m_g_buffer->get_color_attachment().get_native_handle();
         imgui_texture_id = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(texture_id));
         ImGui::Image(imgui_texture_id, image_size, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
         ImGui::End();
@@ -338,13 +330,13 @@ namespace game
 
         ImGui::End();
     }
-    void DeferredRenderingScene::on_attach()
+    void PBRScene::on_attach()
     {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
     }
-    void DeferredRenderingScene::on_detach() { ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0); }
-    void DeferredRenderingScene::setup_lights() const
+    void PBRScene::on_detach() { ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0); }
+    void PBRScene::setup_lights() const
     {
         LightBuffer light_buffer{m_ambient, m_directional.direction, m_directional.color,
                                  static_cast<int>(m_points.size())};
@@ -352,19 +344,19 @@ namespace game
         writer.write(light_buffer);
         for (const auto& point : m_points)
         {
-            PointLightBuffer point_buffer = {point.position, point.color,     point.shininess,
+            PointLightBuffer point_buffer = {point.position, point.color,
                                              point.radius,   point.intensity, point.shadow_map_index};
             writer.write(point_buffer);
         }
         ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_light_buffer.get_native_handle());
     }
-    void DeferredRenderingScene::setup_shadows(const Matrix4& lightSpaceMatrix) const
+    void PBRScene::setup_shadows(const Matrix4& lightSpaceMatrix) const
     {
         m_material->use();
         m_material->set_uniform("light_space_matrix", lightSpaceMatrix);
         m_material->bind_texture(3, &m_shadow_map->get_depth_attachment(), m_shadow_map_sampler.get());
     }
-    std::array<Matrix4, 6> DeferredRenderingScene::calculate_shadow_transformations(const PointLight& point) const
+    std::array<Matrix4, 6> PBRScene::calculate_shadow_transformations(const PointLight& point) const
     {
         return {m_shadow_proj *
                     Matrix4::look_at(point.position, point.position + Vector3(1.0, 0.0, 0.0), Vector3(0.0, -1.0, 0.0)),
@@ -381,35 +373,47 @@ namespace game
     }
 
 
-    void DeferredRenderingScene::setup_point_shadows() const
+    void PBRScene::setup_point_shadows() const
     {
         m_material->use();
         m_material->set_uniform("far_plane", 25.0f);
         m_material->bind_depth_cubemap_array(4, &m_omnidirectional_shadow_map->get_depth_attachment(), m_sampler.get());
     }
 
-    void DeferredRenderingScene::setup_other_uniforms() const
+    void PBRScene::setup_other_uniforms() const
     {
-        m_g_buffer_material->set_uniform("use_normal_map", g_use_normal_map);
         m_g_buffer_material->set_uniform("use_height_map", g_use_height_map);
     }
-    void DeferredRenderingScene::execute_g_pass() const
+    void PBRScene::execute_g_pass() const
     {
         m_g_buffer->bind();
         ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ::glEnable(GL_DEPTH_TEST);
         m_renderer->set_camera(m_camera);
-        setup_other_uniforms();
+        //setup_other_uniforms();
         for (const auto& entity : m_entities)
         {
-            m_g_buffer_material->set_uniform("height_scale", entity.has_height_map() ? g_height_map_scale : 0.0f);
-            m_renderer->draw_mesh(entity.get_mesh(), m_g_buffer_material.get(), entity.get_model_matrix(),
+            const auto* material = entity.get_material();
+            
+        
+            material->set_uniform("height_scale", entity.has_height_map() ? g_height_map_scale : 0.0f);
+            material->set_uniform("use_height_map", g_use_height_map);
+
+            if (material == m_pbr_test_material.get())
+            {
+                material->set_uniform("in_albedo", g_pbr_test_albedo);
+                material->set_uniform("in_ao", g_pbr_test_ao);
+                material->set_uniform("in_roughness", g_pbr_test_roughness);
+                material->set_uniform("in_metallic", g_pbr_test_metallic);
+            }
+
+            m_renderer->draw_mesh(entity.get_mesh(), material, entity.get_model_matrix(),
                                   entity.get_textures());
         }
         m_g_buffer->unbind();
     }
-    void DeferredRenderingScene::execute_lighting_pass(const Matrix4& light_space_matrix) const
+    void PBRScene::execute_lighting_pass(const Matrix4& light_space_matrix) const
     {
         m_post_process_fbo->bind();
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -422,12 +426,12 @@ namespace game
         m_material->bind_texture(5, &m_ssao_blur_fbo->get_color_attachment(), m_sampler.get());
         m_material->set_uniform("ssao", g_enable_ssao);
         Matrix4 view_proj_inverse =
-        Matrix4::inverse(m_camera->get_view_as_matrix()) * Matrix4::inverse(m_camera->get_projection_as_matrix());
-        m_material->set_uniform("inv_view_proj",  view_proj_inverse);
+            Matrix4::inverse(m_camera->get_projection_as_matrix()  * m_camera->get_view_as_matrix());
+        m_material->set_uniform("inv_view_proj", view_proj_inverse);
         m_renderer->draw_fullscreen_quad();
         m_post_process_fbo->unbind();
     }
-    void DeferredRenderingScene::execute_post_process_pass() const
+    void PBRScene::execute_post_process_pass() const
     {
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ::glDisable(GL_DEPTH_TEST);
@@ -435,7 +439,7 @@ namespace game
         m_post_process_material->set_uniform("enable_hdr", g_enable_hdr);
         m_renderer->draw_post_process_texture(m_post_process_material.get(), m_sampler.get(), m_post_process_fbo.get());
     }
-    void DeferredRenderingScene::execute_shadow_pass(const Matrix4& light_space_matrix) const
+    void PBRScene::execute_shadow_pass(const Matrix4& light_space_matrix) const
     {
         ::glEnable(GL_DEPTH_TEST);
         m_shadow_map->bind();
@@ -470,7 +474,7 @@ namespace game
         }
         m_omnidirectional_shadow_map->unbind();
     }
-    Matrix4 DeferredRenderingScene::calculate_light_space_matrix() const
+    Matrix4 PBRScene::calculate_light_space_matrix() const
     {
         Vector3 light_dir = Vector3::normalize(m_directional.direction);
         Vector3 scene_center = {0.0f, 0.0f, 0.0f};
@@ -482,20 +486,21 @@ namespace game
         return light_projection * light_view;
     }
 
-    void DeferredRenderingScene::setup_textures_from_g_buffer() const
+    void PBRScene::setup_textures_from_g_buffer() const
     {
         m_material->bind_texture(0, &m_g_buffer->get_color_attachment(0), m_sampler.get());
         m_material->bind_texture(1, &m_g_buffer->get_color_attachment(1), m_sampler.get());
-        m_material->bind_texture(2, &m_g_buffer->get_depth_attachment(), m_sampler.get());
+        m_material->bind_texture(2, &m_g_buffer->get_color_attachment(2), m_sampler.get());
+        m_material->bind_texture(6, &m_g_buffer->get_depth_attachment(), m_sampler.get());
     }
-    void DeferredRenderingScene::execute_ssao_pass() const
+    void PBRScene::execute_ssao_pass() const
     {
         m_ssao_fbo->bind();
         ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ::glDisable(GL_DEPTH_TEST);
         m_renderer->set_camera(m_camera);
         m_ssao_material->use();
-        m_ssao_material->bind_texture(0, &m_g_buffer->get_color_attachment(0), m_sampler.get());
+        m_ssao_material->bind_texture(0, &m_g_buffer->get_color_attachment(1), m_sampler.get());
         m_ssao_material->bind_texture(1, &m_g_buffer->get_depth_attachment(), m_sampler.get());
         m_ssao_material->bind_texture(2, m_ssao_noise_texture.get(), m_sampler.get());
         m_ssao_material->set_uniform("samples[0]", m_ssao_kernel);
@@ -511,7 +516,7 @@ namespace game
         m_ssao_blur_fbo->unbind();
     }
 
-    void DeferredRenderingScene::debug_draw(const Texture& attachment) const
+    void PBRScene::debug_draw(const Texture& attachment) const
     {
         m_debug_fbo->bind();
         m_debug_view_material->use();

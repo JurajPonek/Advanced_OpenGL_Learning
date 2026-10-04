@@ -16,6 +16,7 @@ layout(std140, binding = 0) uniform camera
 };
 uniform mat4 inverse_proj;
 uniform vec3 samples[64];
+uniform float power;
 
 const int kernel_size = 64;
 const float radius = 0.5;    
@@ -71,7 +72,7 @@ void main()
     vec3 tangent = normalize(random_vec - view_normal * dot(random_vec, view_normal));
     vec3 bitangent = cross(view_normal, tangent);
     mat3 TBN = mat3(tangent, bitangent, view_normal);
-    float ao = calculate_ssao_occlusion(TBN, frag_pos_view_space) ;
+    float ao = pow(calculate_ssao_occlusion(TBN, frag_pos_view_space), power);
     frag_color = vec4(vec3(ao), 1.0); 
 
 
