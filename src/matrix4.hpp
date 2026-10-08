@@ -47,7 +47,6 @@ namespace game
                 return m_data;
             }
 
-
             static constexpr Matrix4 look_at(const Vector3& position, const Vector3& target, const Vector3& up)
             {
                 const auto direction = Vector3::normalize(target - position);
@@ -183,6 +182,12 @@ namespace game
                 return res;
             }
 
+            constexpr float& operator[](size_t index)
+            {
+                return m_data[index];
+            }
+
+            constexpr float operator[](size_t index) const { return m_data[index]; }
 
           private:
             std::array<float, 16> m_data;

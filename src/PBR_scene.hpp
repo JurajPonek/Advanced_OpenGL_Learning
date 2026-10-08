@@ -67,6 +67,7 @@ namespace game
         Matrix4 calculate_light_space_matrix() const;
         void setup_textures_from_g_buffer() const;
         void debug_draw(const Texture& attachment) const;
+        void draw_background() const;
 
       private:
         std::vector<Entity> m_entities;
@@ -75,6 +76,7 @@ namespace game
         std::unique_ptr<Sampler> m_sampler;
         std::unique_ptr<Sampler> m_shadow_map_sampler;
         std::unique_ptr<Mesh> m_sphere;
+        std::unique_ptr<Mesh> m_plane;
         std::unique_ptr<Material> m_material;
         std::unique_ptr<Material> m_post_process_material;
         std::unique_ptr<Material> m_shadow_map_material;
@@ -84,12 +86,19 @@ namespace game
         std::unique_ptr<Material> m_ssao_blur_material;
         std::unique_ptr<Material> m_debug_view_material;
         std::unique_ptr<Material> m_pbr_test_material;
-        std::unique_ptr<Texture> m_sphere_albedo;
-        std::unique_ptr<Texture> m_sphere_normal;
-        std::unique_ptr<Texture> m_sphere_metallic;
-        std::unique_ptr<Texture> m_sphere_roughness;
-        std::unique_ptr<Texture> m_sphere_height;
-        std::unique_ptr<Texture> m_sphere_ao;
+        std::unique_ptr<Material> m_background_material;
+        std::unique_ptr<Texture> m_sloppy_mortar_albedo;
+        std::unique_ptr<Texture> m_sloppy_mortar_normal;
+        std::unique_ptr<Texture> m_sloppy_mortar_metallic;
+        std::unique_ptr<Texture> m_sloppy_mortar_roughness;
+        std::unique_ptr<Texture> m_sloppy_mortar_height;
+        std::unique_ptr<Texture> m_sloppy_mortar_ao;
+        std::unique_ptr<Texture> m_bare_wood_albedo;
+        std::unique_ptr<Texture> m_bare_wood_normal;
+        std::unique_ptr<Texture> m_bare_wood_metallic;
+        std::unique_ptr<Texture> m_bare_wood_roughness;
+        std::unique_ptr<Texture> m_bare_wood_height;
+        std::unique_ptr<Texture> m_bare_wood_ao;
         std::unique_ptr<Texture> m_default_normal_map_texture;
         std::unique_ptr<Texture> m_default_height_map_texture;
         Renderer* m_renderer;
@@ -100,6 +109,7 @@ namespace game
         std::unique_ptr<FrameBuffer> m_ssao_fbo;
         std::unique_ptr<FrameBuffer> m_ssao_blur_fbo;
         std::unique_ptr<FrameBuffer> m_debug_fbo;
+        std::unique_ptr<CubeMap> m_env_map;
         MeshLoader* m_mesh_loader;
         std::vector<PointLight> m_points;
         Buffer m_light_buffer;

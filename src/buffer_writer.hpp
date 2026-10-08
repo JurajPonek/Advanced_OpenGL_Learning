@@ -19,7 +19,7 @@ namespace game
         m_offset += size;
       }
       template<typename T>
-      void write(std::span<const T> data)
+      void write(std::span<T> data)
       {
           m_buffer.write(std::as_bytes(data), m_offset);
           m_offset += data.size_bytes();

@@ -343,7 +343,7 @@ namespace game
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
     }
-    void DeferredRenderingScene::on_detach() { ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0); }
+    void DeferredRenderingScene::on_detach() {} 
     void DeferredRenderingScene::setup_lights() const
     {
         LightBuffer light_buffer{m_ambient, m_directional.direction, m_directional.color,

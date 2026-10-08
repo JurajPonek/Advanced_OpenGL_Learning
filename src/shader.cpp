@@ -21,6 +21,8 @@ namespace
             return GL_FRAGMENT_SHADER;
         case GEOMETRY:
             return GL_GEOMETRY_SHADER;
+        case COMPUTE:
+            return GL_COMPUTE_SHADER;
         }
         throw std::runtime_error("Unknown shader type");
     }

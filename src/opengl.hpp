@@ -110,6 +110,15 @@
     DO(PFNGLTEXTURESTORAGE2DMULTISAMPLEPROC, glTextureStorage2DMultisample)                                            \
     DO(PFNGLTEXTUREPARAMETERFVPROC, glTextureParameterfv)                                                              \
     DO(PFNGLPROGRAMUNIFORM3FVPROC, glProgramUniform3fv)                                                                \
+    DO(PFNGLDISPATCHCOMPUTEPROC, glDispatchCompute)                                                                    \
+    DO(PFNGLDISPATCHCOMPUTEINDIRECTPROC, glDispatchComputeIndirect)                                                    \
+    DO(PFNGLMEMORYBARRIERPROC, glMemoryBarrier)                                                                        \
+    DO(PFNGLMEMORYBARRIERBYREGIONPROC, glMemoryBarrierByRegion)                                                        \
+    DO(PFNGLBINDIMAGETEXTUREPROC, glBindImageTexture)                                                                  \
+    DO(PFNGLBINDIMAGETEXTURESPROC, glBindImageTextures)                                                                \
+    DO(PFNGLBINDBUFFERRANGEPROC, glBindBufferRange)                                                                    \
+    DO(PFNGLSHADERSTORAGEBLOCKBINDINGPROC, glShaderStorageBlockBinding)                                                \
+    DO(PFNGLGETINTEGERI_VPROC, glGetIntegeri_v)
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;
 FOR_OPENGL_FUNCTIONS(DO_DEFINE)

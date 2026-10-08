@@ -12,7 +12,8 @@ namespace game
     {
         VERTEX,
         FRAGMENT,
-        GEOMETRY
+        GEOMETRY, 
+        COMPUTE
     };
 
     class Shader
@@ -49,6 +50,9 @@ template<>
                     return std::format_to(ctx.out(), "{}\n", "FRAGMENT");
                 case GEOMETRY:
                     return std::format_to(ctx.out(), "{}\n", "GEOMETRY");
+                case COMPUTE:
+                    return std::format_to(ctx.out(), "{}\n", "COMPUTE");
+
                 }
             throw game::Exception("Unknown shader type", std::to_underlying(shader_type));
         }  

@@ -17,6 +17,7 @@
 #include "resource_loader.hpp"
 #include "scene.hpp"
 #include "src/advanced_lightning_scene.hpp"
+#include "src/compute_testing_scene.hpp"
 #include "src/frame_buffer_scene.hpp"
 #include "src/instancing_scene.hpp"
 #include "src/vector3.hpp"
@@ -84,12 +85,11 @@ namespace game
             manager.add_scene<DeferredRenderingScene>("DeferredRenderingScene", resource_loader, &m_window, &camera,
                                                       &renderer, &mesh_loader);
             manager.add_scene<PBRScene>("PBRScene", resource_loader, &m_window, &camera, &renderer, &mesh_loader);
+
+            manager.add_scene<ComputeTestingScene>("Compute", resource_loader, &m_window, &camera, &renderer);
             manager.set_startup_scene(
                 [&]()
-                {
-                    return std::make_unique<PBRScene>(resource_loader, &m_window, &camera, &renderer,
-                                                                    &mesh_loader);
-                });
+                { return std::make_unique<PBRScene>(resource_loader, &m_window, &camera, &renderer, &mesh_loader); });
 
 
             auto running = true;

@@ -115,16 +115,25 @@ namespace game
         m_sampler = std::make_unique<Sampler>();
         m_shadow_map_sampler = std::make_unique<Sampler>(SamplerUsage::SHADOWMAP);
 
-        m_sphere_albedo = std::make_unique<Texture>(
-            resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_albedo.png"), TextureFormat::SRGBA);
-        m_sphere_normal = std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_normal-ogl.png"));
-        m_sphere_metallic = std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_metallic.png"));
-        m_sphere_roughness = std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_roughness.png"));
-        m_sphere_height = std::make_unique<Texture>(
-            resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_height.png"));
-        m_sphere_ao =
-            std::make_unique<Texture>(resource_loader.load_binary("PBR/stone_sphere/sloppy-mortar-stone-wall_ao.png"));
+        m_sloppy_mortar_albedo = std::make_unique<Texture>(
+            resource_loader.load_binary("PBR/sloppy_mortar/sloppy-mortar-stone-wall_albedo.png"), TextureFormat::SRGBA);
+        m_sloppy_mortar_normal = std::make_unique<Texture>(
+            resource_loader.load_binary("PBR/sloppy_mortar/sloppy-mortar-stone-wall_normal-ogl.png"));
+        m_sloppy_mortar_metallic = std::make_unique<Texture>(
+            resource_loader.load_binary("PBR/sloppy_mortar/sloppy-mortar-stone-wall_metallic.png"));
+        m_sloppy_mortar_roughness = std::make_unique<Texture>(
+            resource_loader.load_binary("PBR/sloppy_mortar/sloppy-mortar-stone-wall_roughness.png"));
+        m_sloppy_mortar_height = std::make_unique<Texture>(
+            resource_loader.load_binary("PBR/sloppy_mortar/sloppy-mortar-stone-wall_height.png"));
+        m_sloppy_mortar_ao =
+            std::make_unique<Texture>(resource_loader.load_binary("PBR/sloppy_mortar/sloppy-mortar-stone-wall_ao.png"));
 
+        m_bare_wood_albedo = std::make_unique<Texture>(resource_loader.load_binary("PBR/bare_wood/bare-wood1_albedo.png"), TextureFormat::SRGBA);
+        m_bare_wood_normal = std::make_unique<Texture>(resource_loader.load_binary("PBR/bare_wood/bare-wood1_normal-ogl.png"));
+        m_bare_wood_metallic = std::make_unique<Texture>(resource_loader.load_binary("PBR/bare_wood/bare-wood1_metallic.png"));
+        m_bare_wood_roughness = std::make_unique<Texture>(resource_loader.load_binary("PBR/bare_wood/bare-wood1_roughness.png"));
+        m_bare_wood_height = std::make_unique<Texture>(resource_loader.load_binary("PBR/bare_wood/bare-wood1_height.png"));
+        m_bare_wood_ao = std::make_unique<Texture>(resource_loader.load_binary("PBR/bare_wood/bare-wood1_ao.png"));
         TextureSpecification default_map_spec;
         default_map_spec.default_normal_map_texture = true;
         default_map_spec.type = TextureType::TEXTURE2D;
@@ -137,12 +146,17 @@ namespace game
 
 
         const Sampler* samplers[] = {m_sampler.get(), m_sampler.get(), m_sampler.get(), m_sampler.get(), m_sampler.get(), m_sampler.get()};
-        const Texture* textures[] = {m_sphere_albedo.get(), m_sphere_normal.get(), m_sphere_height.get(), m_sphere_ao.get(), m_sphere_metallic.get(), m_sphere_roughness.get()};
-        const Texture* textures1[] = { m_default_normal_map_texture.get(),   m_default_height_map_texture.get(),
-                                     };
+        const Texture* textures[] = {m_sloppy_mortar_albedo.get(),   m_sloppy_mortar_normal.get(),
+                                     m_sloppy_mortar_height.get(),   m_sloppy_mortar_ao.get(),
+                                     m_sloppy_mortar_metallic.get(), m_sloppy_mortar_roughness.get()};
+        const Texture* textures1[] = { m_default_normal_map_texture.get(),   m_default_height_map_texture.get()};
+        const Texture* textures2[] = {m_bare_wood_albedo.get(),   m_bare_wood_normal.get(),
+                                      m_bare_wood_height.get(),   m_bare_wood_ao.get(),
+                                      m_bare_wood_metallic.get(), m_bare_wood_roughness.get()};
 
         const auto tex_samp1 = std::views::zip(textures, samplers) | std::ranges::to<std::vector>();
         const auto tex_samp2 = std::views::zip(textures1, samplers) | std::ranges::to<std::vector>();
+        const auto tex_samp3 = std::views::zip(textures2, samplers) | std::ranges::to<std::vector>();
 
         const auto vertex_shader =
             Shader(resource_loader.load_string("shaders/PBR_vert.glsl"), game::ShaderType::VERTEX);
@@ -182,7 +196,11 @@ namespace game
         const auto debug_view_frag =
             Shader(resource_loader.load_string("shaders/debug_view_frag.glsl"), game::ShaderType::FRAGMENT);
         const auto pbr_test_frag =
-            Shader(resource_loader.load_string("shaders/PBR_test_frag.glsl"), game::ShaderType::FRAGMENT);
+            Shader(resource_loader.load_string("shaders/PBR_g_pass_test_frag.glsl"), game::ShaderType::FRAGMENT);
+        const auto background_vert =
+            Shader(resource_loader.load_string("shaders/background_vert.glsl"), game::ShaderType::VERTEX);
+        const auto background_frag =
+            Shader(resource_loader.load_string("shaders/background_frag.glsl"), game::ShaderType::FRAGMENT);
 
 
         m_material = std::make_unique<Material>(vertex_shader, fragment_shader);
@@ -195,11 +213,17 @@ namespace game
         m_ssao_blur_material = std::make_unique<Material>(full_screen_quad_vert, ssao_blur_frag);
         m_debug_view_material = std::make_unique<Material>(full_screen_quad_vert, debug_view_frag);
         m_pbr_test_material = std::make_unique<Material>(g_pass_vert, pbr_test_frag);
+        m_background_material = std::make_unique<Material>(background_vert, background_frag);
 
         m_sphere = std::make_unique<Mesh>(m_mesh_loader->sphere());
+        m_plane = std::make_unique<Mesh>(m_mesh_loader->plane());
 
         m_entities.emplace_back(m_sphere.get(), m_g_buffer_material.get(), Vector3{5.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp1, true);
         m_entities.emplace_back(m_sphere.get(), m_pbr_test_material.get(), Vector3{1.0f, 1.0f, 1.0f}, Vector3{1.0f}, tex_samp2);
+        m_entities.emplace_back(m_plane.get(), m_g_buffer_material.get(), Vector3{1.0f, -1.0f, 1.0f}, Vector3{10.0f, 1.0f, 10.0f},
+                                tex_samp3);
+
+        m_env_map = std::make_unique<CubeMap>("HDR_Maps/grasslands_sunset_4k.hdr", resource_loader);
 
 
         std::random_device rd{};
@@ -236,6 +260,7 @@ namespace game
         execute_g_pass();
         execute_ssao_pass();
         execute_lighting_pass(light_space_matrix);
+        draw_background();
         execute_post_process_pass();
     }
     void PBRScene::on_imgui_render()
@@ -334,6 +359,7 @@ namespace game
     {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
+        glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); // bez tohto su vidno hrany cubemapy
     }
     void PBRScene::on_detach() { ::glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0); }
     void PBRScene::setup_lights() const
@@ -396,7 +422,6 @@ namespace game
         {
             const auto* material = entity.get_material();
             
-        
             material->set_uniform("height_scale", entity.has_height_map() ? g_height_map_scale : 0.0f);
             material->set_uniform("use_height_map", g_use_height_map);
 
@@ -523,6 +548,37 @@ namespace game
         m_debug_view_material->bind_texture(0, &attachment, m_sampler.get());
         m_renderer->draw_fullscreen_quad();
         m_debug_fbo->unbind();
+    }
+    void PBRScene::draw_background() const
+    {
+        m_post_process_fbo->bind();
+
+        ::glBlitNamedFramebuffer(m_g_buffer->get_native_handle(),    
+                                 m_post_process_fbo->get_native_handle(),
+                                 0, 0, m_g_buffer->get_width(), m_g_buffer->get_height(), 0, 0,
+                                 m_post_process_fbo->get_width(), m_post_process_fbo->get_height(), GL_DEPTH_BUFFER_BIT,
+                                 GL_NEAREST);
+
+        ::glEnable(GL_DEPTH_TEST);
+        ::glDepthFunc(GL_LEQUAL);
+        ::glDepthMask(GL_FALSE); 
+
+        m_background_material->use();
+
+        Matrix4 view = m_camera->get_view_as_matrix();
+        view[12] = 0.0f;
+        view[13] = 0.0f;
+        view[14] = 0.0f;
+
+        Matrix4 inv_view_proj = Matrix4::inverse(m_camera->get_projection_as_matrix() * view);
+        m_background_material->set_uniform("u_InvViewProj", inv_view_proj);
+
+        m_background_material->bind_cubemap(m_env_map.get(), m_sampler.get());
+
+        m_renderer->draw_fullscreen_quad();
+        ::glDepthMask(GL_TRUE);
+        ::glDepthFunc(GL_LESS);
+        m_post_process_fbo->unbind();
     }
 
 

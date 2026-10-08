@@ -73,7 +73,7 @@ float GeometrySchlickGGX(float NdotV, float roughness)
 
     float num   = NdotV;
     float denom = NdotV * (1.0 - k) + k;
-	
+    	
     return num / denom;
 }
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
