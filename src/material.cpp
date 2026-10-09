@@ -203,12 +203,12 @@ namespace game
             bind_texture(static_cast<std::uint32_t>(index), texture, sampler);
         }
     }
-    void Material::bind_cubemap(const CubeMap* texture, const Sampler* sampler) const
+    void Material::bind_cubemap(const CubeMap* texture, const Sampler* sampler, std::uint32_t index) const
     {
-        ::glBindTextureUnit(0, texture->get_native_handle());
-        ::glBindSampler(0, sampler->get_native_handle());
-        const auto uniform_name = std::format("tex{}", 0);
-        set_uniform(uniform_name, 0);
+        ::glBindTextureUnit(index, texture->get_native_handle());
+        ::glBindSampler(index, sampler->get_native_handle());
+        const auto uniform_name = std::format("tex{}", index);
+        set_uniform(uniform_name, static_cast<int>(index));
     }
     void Material::bind_depth_cubemap_array(std::uint32_t index, const Texture* texture, const Sampler* sampler) const
     {

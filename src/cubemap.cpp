@@ -12,11 +12,16 @@
 #include <gl/gl.h>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include <ranges>
 namespace game
 {
-    
+    CubeMap::CubeMap(AutoRelease<::GLuint>& handle)
+        :m_handle{std::move(handle)}
+    {
+
+    }
     CubeMap::CubeMap(const std::vector<std::string>& faces, const ResourceLoader& loader)
         :m_handle{0u, [](auto tex){::glDeleteTextures(1, &tex);}}
     {
@@ -74,9 +79,10 @@ namespace game
         stbi_image_free(data);
 
         constexpr int cube_size = 2048;
+        int levels = static_cast<int>(std::floor(std::log2(cube_size))) + 1;
         ::glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_handle);
-        ::glTextureStorage2D(m_handle, 1, GL_RGBA16F, cube_size, cube_size);
-        ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        ::glTextureStorage2D(m_handle, levels, GL_RGBA16F, cube_size, cube_size);
+        ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -88,12 +94,32 @@ namespace game
         ::glBindTextureUnit(0, hdr_texture);
         ::glBindImageTexture(1, m_handle, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
         ::glDispatchCompute((cube_size + 15) / 16, (cube_size + 15) / 16, 6);
-        ::glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
+        ::glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        ::glGenerateTextureMipmap(m_handle);
     }
 
     ::GLuint CubeMap::get_native_handle() const
     {
         return m_handle;
+    }
+    CubeMap CubeMap::generate_irradiance_map(const CubeMap* hdr_cubemap, const ResourceLoader& loader)
+    {
+        AutoRelease<GLuint, 0u> irradiance_map{0u, [](auto tex) { ::glDeleteTextures(1, &tex); }};
+        const int irradiance_map_size = 32;
+        ::glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &irradiance_map);
+        ::glTextureStorage2D(irradiance_map, 1, GL_RGBA16F, irradiance_map_size, irradiance_map_size);
+        ::glTextureParameteri(irradiance_map, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        ::glTextureParameteri(irradiance_map, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        ::glTextureParameteri(irradiance_map, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        ::glTextureParameteri(irradiance_map, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        ::glTextureParameteri(irradiance_map, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        const auto shader = Shader(loader.load_string("shaders/generate_irradiance_map_compute.glsl"), ShaderType::COMPUTE);
+        const auto mat = Material{shader};
+        mat.use();
+        ::glBindTextureUnit(0, hdr_cubemap->get_native_handle());
+        ::glBindImageTexture(1, irradiance_map, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        ::glDispatchCompute((irradiance_map_size + 15) / 16, (irradiance_map_size + 15) / 16, 6);
+        ::glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        return CubeMap { irradiance_map};
     }
 }

@@ -1,6 +1,7 @@
 #include "PBR_scene.hpp"
 #include "buffer_writer.hpp"
 #include "color.hpp"
+#include "cubemap.hpp"
 #include "error.hpp"
 #include "framebuffer.hpp"
 #include "imgui.h"
@@ -224,6 +225,8 @@ namespace game
                                 tex_samp3);
 
         m_env_map = std::make_unique<CubeMap>("HDR_Maps/grasslands_sunset_4k.hdr", resource_loader);
+        m_irradiance_map = std::make_unique<CubeMap>(CubeMap::generate_irradiance_map(m_env_map.get(), resource_loader));
+
 
 
         std::random_device rd{};
@@ -449,6 +452,7 @@ namespace game
         setup_point_shadows();
         setup_textures_from_g_buffer();
         m_material->bind_texture(5, &m_ssao_blur_fbo->get_color_attachment(), m_sampler.get());
+        m_material->bind_cubemap(m_irradiance_map.get(), m_sampler.get(), 7);
         m_material->set_uniform("ssao", g_enable_ssao);
         Matrix4 view_proj_inverse =
             Matrix4::inverse(m_camera->get_projection_as_matrix()  * m_camera->get_view_as_matrix());

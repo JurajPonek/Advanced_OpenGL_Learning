@@ -110,6 +110,7 @@ namespace game
         std::unique_ptr<FrameBuffer> m_ssao_blur_fbo;
         std::unique_ptr<FrameBuffer> m_debug_fbo;
         std::unique_ptr<CubeMap> m_env_map;
+        std::unique_ptr<CubeMap> m_irradiance_map;
         MeshLoader* m_mesh_loader;
         std::vector<PointLight> m_points;
         Buffer m_light_buffer;

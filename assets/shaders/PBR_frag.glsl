@@ -10,6 +10,7 @@ uniform sampler2DShadow tex3; //shadow map
 uniform samplerCubeArray tex4; //omnidirectional shadow map
 uniform sampler2D tex5; //ssao
 uniform sampler2D tex6; //depth
+uniform samplerCube tex7; //irradiance map
 
 uniform float far_plane;
 uniform mat4 light_space_matrix;
@@ -50,6 +51,11 @@ const float PI = 3.14159265359;
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+} 
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 } 
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -107,6 +113,8 @@ vec3 calculatePBR(vec3 N, vec3 V, vec3 L, vec3 radiance, vec3 albedo, float roug
 
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
+
+
 
 float calculate_point_shadow(int index, vec4 frag_pos)
 {
@@ -184,6 +192,16 @@ float calculate_attenuation(float distance, float radius)
     return att * smoothCutoff;
 }
 
+vec3 calculate_ambient(vec3 N, vec3 V, vec3 albedo, float metallic, float roughness, float ao, float ssao_factor, vec3 light_ambient)
+{
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+    vec3 kD = 1.0 - kS;
+    vec3 irradiance = texture(tex7, N).rgb;
+    vec3 diffuse    = irradiance * albedo * light_ambient;
+    return (kD * diffuse) * ao * ssao_factor;
+}
+
 
 void main()
 {
@@ -210,7 +228,7 @@ void main()
     vec3 V = normalize(camera_position - frag_pos.xyz);
 
     //ambient
-    vec3 total_light = ambient * albedo * ssao_factor * ao;
+    vec3 total_light = calculate_ambient(normal, V, albedo, metallic, roughness, ao, ssao_factor, ambient);
     //directional
     vec4 frag_pos_light_space = light_space_matrix * frag_pos;
     float dir_shadow = calculate_directional_shadow(frag_pos_light_space, normal);
