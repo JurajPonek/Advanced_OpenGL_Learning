@@ -38,6 +38,12 @@ namespace game
                 ::glSamplerParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 ::glSamplerParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                 break;
+            case HDRCUBEMAP:
+                ::glSamplerParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+                ::glSamplerParameteri(m_handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                ::glSamplerParameteri(m_handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                ::glSamplerParameteri(m_handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                ::glSamplerParameteri(m_handle, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         }
     }
     ::GLuint Sampler::get_native_handle() const { return m_handle; }

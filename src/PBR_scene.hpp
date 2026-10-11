@@ -47,7 +47,7 @@ namespace game
 
       public:
         PBRScene(ResourceLoader& resource_loader, Window* window, Camera* camera, Renderer* renderer,
-                               MeshLoader* mesh_loader);
+                 MeshLoader* mesh_loader);
         virtual void on_render() override;
         virtual void on_imgui_render() override;
         virtual void on_attach() override;
@@ -74,6 +74,8 @@ namespace game
         Camera* m_camera;
         std::unique_ptr<Texture> m_ssao_noise_texture;
         std::unique_ptr<Sampler> m_sampler;
+        std::unique_ptr<Sampler> m_color_texture_sampler;
+        std::unique_ptr<Sampler> m_hdr_cubemap_sampler;
         std::unique_ptr<Sampler> m_shadow_map_sampler;
         std::unique_ptr<Mesh> m_sphere;
         std::unique_ptr<Mesh> m_plane;
@@ -93,6 +95,12 @@ namespace game
         std::unique_ptr<Texture> m_sloppy_mortar_roughness;
         std::unique_ptr<Texture> m_sloppy_mortar_height;
         std::unique_ptr<Texture> m_sloppy_mortar_ao;
+        std::unique_ptr<Texture> m_white_gold_albedo;
+        std::unique_ptr<Texture> m_white_gold_normal;
+        std::unique_ptr<Texture> m_white_gold_metallic;
+        std::unique_ptr<Texture> m_white_gold_roughness;
+        std::unique_ptr<Texture> m_white_gold_height;
+        std::unique_ptr<Texture> m_white_gold_ao;
         std::unique_ptr<Texture> m_bare_wood_albedo;
         std::unique_ptr<Texture> m_bare_wood_normal;
         std::unique_ptr<Texture> m_bare_wood_metallic;
@@ -101,6 +109,7 @@ namespace game
         std::unique_ptr<Texture> m_bare_wood_ao;
         std::unique_ptr<Texture> m_default_normal_map_texture;
         std::unique_ptr<Texture> m_default_height_map_texture;
+        std::unique_ptr<Texture> m_brdf_lut_texture;
         Renderer* m_renderer;
         std::unique_ptr<FrameBuffer> m_post_process_fbo;
         std::unique_ptr<FrameBuffer> m_shadow_map;
@@ -111,6 +120,7 @@ namespace game
         std::unique_ptr<FrameBuffer> m_debug_fbo;
         std::unique_ptr<CubeMap> m_env_map;
         std::unique_ptr<CubeMap> m_irradiance_map;
+        std::unique_ptr<CubeMap> m_prefiltered_env_map;
         MeshLoader* m_mesh_loader;
         std::vector<PointLight> m_points;
         Buffer m_light_buffer;

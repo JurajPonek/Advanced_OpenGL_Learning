@@ -11,6 +11,7 @@ namespace game
     {
         public:
           static CubeMap generate_irradiance_map(const CubeMap* hdr_cubemap, const ResourceLoader& loader);
+          static CubeMap generate_prefiltered_hdr_map(const CubeMap* hdr_cubemap, const ResourceLoader& loader);
 
         public:
             CubeMap(AutoRelease<::GLuint>& handle);

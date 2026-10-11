@@ -11,6 +11,8 @@ uniform samplerCubeArray tex4; //omnidirectional shadow map
 uniform sampler2D tex5; //ssao
 uniform sampler2D tex6; //depth
 uniform samplerCube tex7; //irradiance map
+uniform samplerCube tex8; //prefiltered_env_map map
+uniform sampler2D tex9; //brdf_lut texture
 
 uniform float far_plane;
 uniform mat4 light_space_matrix;
@@ -197,9 +199,16 @@ vec3 calculate_ambient(vec3 N, vec3 V, vec3 albedo, float metallic, float roughn
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
     vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
     vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;	
     vec3 irradiance = texture(tex7, N).rgb;
-    vec3 diffuse    = irradiance * albedo * light_ambient;
-    return (kD * diffuse) * ao * ssao_factor;
+    vec3 diffuse    = irradiance * albedo;
+
+    vec3 R = reflect(-V, N);
+    const float MAX_REFLECTION_LOD = 5.0;
+    vec3 prefiltered_color = textureLod(tex8, R,  roughness * MAX_REFLECTION_LOD).rgb;   
+    vec2 envBRDF  = texture(tex9, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefiltered_color * (kS * envBRDF.x + envBRDF.y); 
+    return ((kD * diffuse * ao * ssao_factor) + specular * ssao_factor) * light_ambient;
 }
 
 
@@ -226,6 +235,7 @@ void main()
     vec3 albedo = albedo_ao.rgb;
     float ao = albedo_ao.a;
     vec3 V = normalize(camera_position - frag_pos.xyz);
+
 
     //ambient
     vec3 total_light = calculate_ambient(normal, V, albedo, metallic, roughness, ao, ssao_factor, ambient);

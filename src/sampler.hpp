@@ -7,7 +7,8 @@ enum class SamplerUsage
 {
   SHADOWMAP,
   DEPTHTEXTURE,
-  COLORTEXTURE
+  COLORTEXTURE,
+  HDRCUBEMAP
 };
 
 namespace game

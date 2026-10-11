@@ -2,6 +2,7 @@
 
 #include "auto_release.hpp"
 #include "opengl.hpp"
+#include "resource_loader.hpp"
 #include "vector3.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -54,6 +55,8 @@ namespace game
 
     class Texture
     {
+      public:
+        static Texture generate_brdf_lut_texture(const ResourceLoader& loader);
       public:
         Texture(std::span<const std::byte> data);
         Texture(std::span<const std::byte> data, TextureFormat format);

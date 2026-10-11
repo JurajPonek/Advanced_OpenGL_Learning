@@ -118,7 +118,8 @@
     DO(PFNGLBINDIMAGETEXTURESPROC, glBindImageTextures)                                                                \
     DO(PFNGLBINDBUFFERRANGEPROC, glBindBufferRange)                                                                    \
     DO(PFNGLSHADERSTORAGEBLOCKBINDINGPROC, glShaderStorageBlockBinding)                                                \
-    DO(PFNGLGETINTEGERI_VPROC, glGetIntegeri_v)
+    DO(PFNGLGETINTEGERI_VPROC, glGetIntegeri_v)                                                                        \
+    DO(PFNGLCLEARTEXIMAGEPROC, glClearTexImage)                                                                        \
 
 #define DO_DEFINE(TYPE, NAME) inline TYPE NAME;
 FOR_OPENGL_FUNCTIONS(DO_DEFINE)

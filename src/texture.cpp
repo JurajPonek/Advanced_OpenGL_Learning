@@ -1,6 +1,9 @@
 #include "texture.hpp"
 #include "error.hpp"
+#include "material.hpp"
 #include "opengl.hpp"
+#include "resource_loader.hpp"
+#include "shader.hpp"
 #include "vector3.hpp"
 #include "vendor/opengl/glext.h"
 #include <cstddef>
@@ -166,10 +169,12 @@ namespace game
                 }
 
                 GLenum wrapping_mode = to_gl_internal_wrapping_mode(spec.texture_wrapping);
+                // ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                 ::glTextureParameteri(m_handle, GL_TEXTURE_MIN_FILTER, filter);
                 ::glTextureParameteri(m_handle, GL_TEXTURE_MAG_FILTER, filter);
                 ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_S, wrapping_mode);
                 ::glTextureParameteri(m_handle, GL_TEXTURE_WRAP_T, wrapping_mode);
+                // ::glGenerateTextureMipmap(m_handle);
             }
             else 
             {
@@ -197,4 +202,22 @@ namespace game
         ::glTextureSubImage2D(m_handle, 0, 0, 0, spec.width, spec.height, GL_RGB, GL_FLOAT, data.data());
     }
     ::GLuint Texture::get_native_handle() const { return m_handle; }
+    Texture Texture::generate_brdf_lut_texture(const ResourceLoader& loader)
+    {
+        TextureSpecification spec;
+        spec.width = 512;
+        spec.height = 512;
+        spec.type = TextureType::TEXTURE2D;
+        spec.format = TextureFormat::RGBA16F;
+        spec.texture_wrapping = TextureWrappingMode::CLAMP_TO_EDGE;
+        spec.filter_mode = TextureFilterMode::LINEAR;
+        Texture lut_texture = Texture{spec};
+        const auto brdf_integration_compute = Shader(loader.load_string("shaders/brdf_integration_compute.glsl"), ShaderType::COMPUTE);
+        const auto mat = Material{brdf_integration_compute};
+        mat.use();
+        ::glBindImageTexture(0, lut_texture.m_handle, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        ::glDispatchCompute((spec.width + 15) / 16, (spec.height + 15) / 16, 1);
+        ::glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        return lut_texture;
+    }
 } // namespace game
